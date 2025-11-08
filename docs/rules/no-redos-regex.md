@@ -8,6 +8,8 @@ Warns about regular expressions that can trigger catastrophic backtracking (ReDo
 
 **Better approach**: Rewrite the pattern to avoid overlapping quantifiers, or rely on pre-vetted libraries/parsers when matching untrusted input.
 
+> ℹ️ This rule can auto-fix the simplest nested quantifier forms (for example `(a+)+` → `(a+)`) but still flags more complex patterns that require manual review.
+
 ## Invalid
 
 ```ts

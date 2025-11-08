@@ -13,14 +13,31 @@ function isSafe(pattern: string): boolean {
   }
 }
 
-function getPatternFromNewExpression(node: TSESTree.NewExpression): string | null {
+function getSimpleNestedQuantifierRewrite(pattern: string): string | null {
+  const match = pattern.match(/^(\^?)(?:\((\w)\+\))\+(\$?)$/);
+  if (!match) {
+    return null;
+  }
+
+  const prefix = match[1] ?? '';
+  const char = match[2];
+  const suffix = match[3] ?? '';
+
+  if (!char) {
+    return null;
+  }
+
+  return `${prefix}(${char}+)${suffix}`;
+}
+
+function getPatternLiteralFromNewExpression(node: TSESTree.NewExpression): TSESTree.Literal | null {
   const [patternArg] = node.arguments;
   if (!patternArg) {
     return null;
   }
 
   if (patternArg.type === AST_NODE_TYPES.Literal && typeof patternArg.value === 'string') {
-    return patternArg.value;
+    return patternArg;
   }
 
   return null;
@@ -34,6 +51,7 @@ export default createRule<Options, MessageIds>({
       description: 'Detect regular expressions that are vulnerable to catastrophic backtracking (ReDoS).',
   recommended: 'recommended'
     },
+    fixable: 'code',
     schema: [],
     messages: {
       redosRisk: 'This regular expression is susceptible to catastrophic backtracking (ReDoS). Refactor it to a safer alternative or use a vetted pattern.'
@@ -52,9 +70,17 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
+        const rewrite = getSimpleNestedQuantifierRewrite(pattern);
+
         context.report({
           node,
-          messageId: 'redosRisk'
+          messageId: 'redosRisk',
+          fix: rewrite
+            ? (fixer: TSESLint.RuleFixer) => {
+                const flags = node.regex?.flags ?? '';
+                return fixer.replaceText(node, `/${rewrite}/${flags}`);
+              }
+            : undefined
         });
       },
       NewExpression(node: TSESTree.NewExpression) {
@@ -62,14 +88,32 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-        const pattern = getPatternFromNewExpression(node);
-        if (!pattern || isSafe(pattern)) {
+        const patternLiteral = getPatternLiteralFromNewExpression(node);
+        if (!patternLiteral) {
           return;
         }
 
+        const patternValue = patternLiteral.value;
+        if (typeof patternValue !== 'string' || isSafe(patternValue)) {
+          return;
+        }
+
+        const rewrite = getSimpleNestedQuantifierRewrite(patternValue);
+
         context.report({
-          node,
-          messageId: 'redosRisk'
+          node: patternLiteral,
+          messageId: 'redosRisk',
+          fix: rewrite
+            ? (fixer: TSESLint.RuleFixer) => {
+                const raw = patternLiteral.raw ?? JSON.stringify(patternValue);
+                const preferDouble = raw.startsWith('"');
+                const quote = preferDouble ? '"' : "'";
+                const escaped = rewrite
+                  .replace(/\\/g, '\\\\')
+                  .replace(new RegExp(quote, 'g'), `\\${quote}`);
+                return fixer.replaceText(patternLiteral, `${quote}${escaped}${quote}`);
+              }
+            : undefined
         });
       }
     };

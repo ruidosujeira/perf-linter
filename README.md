@@ -65,17 +65,29 @@ const hasAny = users.some(isActive);
 
 ### `perf-fiscal/no-unstable-usememo-deps` ([docs](docs/rules/no-unstable-usememo-deps.md))
 
-- **Anti-pattern** – inline dependencies invalidate memoization every render:
+- **Anti-pattern** – inline dependencies or props derived from inline literals invalidate memoization every render:
 
 ```tsx
 const memo = useMemo(() => compute(expensive), [{}]);
+
+function Parent() {
+  const options = {};
+  return <Child options={options} />;
+}
+
+function Child({ options }) {
+  return useMemo(() => compute(options), [options]);
+}
 ```
 
-- **Preferred** – hoist or reuse stable references:
+- **Preferred** – hoist or memoize upstream so the dependency identity stays stable:
 
 ```tsx
 const stableDeps = useMemo(() => buildDeps(raw), [raw]);
 const memo = useMemo(() => compute(expensive), [stableDeps]);
+
+const options = useMemo(() => ({ cache: true }), []);
+return <Child options={options} />;
 ```
 
 ### `perf-fiscal/no-redos-regex` ([docs](docs/rules/no-redos-regex.md))
@@ -90,6 +102,21 @@ const risky = /(a+)+$/;
 
 ```ts
 const safe = /^a+$/;
+```
+
+### `perf-fiscal/detect-unnecessary-rerenders` ([docs](docs/rules/detect-unnecessary-rerenders.md))
+
+- **Anti-pattern** – inline callbacks inside `map` invalidate memoized children:
+
+```tsx
+return items.map(item => <Item onClick={() => handle(item.id)} />);
+```
+
+- **Preferred** – hoist callbacks or memoize them with `useCallback`:
+
+```tsx
+const onClick = useCallback((id: string) => handle(id), [handle]);
+return items.map(item => <Item onClick={onClick} />);
 ```
 
 ## Development

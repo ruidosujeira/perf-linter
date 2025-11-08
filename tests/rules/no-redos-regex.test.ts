@@ -15,6 +15,12 @@ ruleTester.run('no-redos-regex', rule, {
   invalid: [
     {
       code: 'const risky = /(a+)+$/;',
+      output: 'const risky = /(a+)$/;',
+      errors: [{ messageId: 'redosRisk' }]
+    },
+    {
+      code: 'const nested = new RegExp("(a+)+");',
+      output: 'const nested = new RegExp("(a+)");',
       errors: [{ messageId: 'redosRisk' }]
     },
     {
