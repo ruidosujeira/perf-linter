@@ -9,6 +9,8 @@
 
 [Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. Powered by a cross-file TypeScript analysis engine, it delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
 
+> Prefer Portuguese? Confira a versão traduzida em [`README-pt.md`](README-pt.md).
+
 > 💡 **First in class:** Perf Fiscal is the first performance linting toolkit to correlate multi-file signals in real time, using the TypeScript checker to understand components, props, and async flows across your entire project.
 
 ## Table of Contents
