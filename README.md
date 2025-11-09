@@ -4,6 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-perf-fiscal.svg?color=blue)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
+![Cross-File Powered](https://img.shields.io/badge/Cross--File-Analysis-blueviolet?style=flat-square)
 
 [Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. Powered by a cross-file TypeScript analysis engine, it delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
 
@@ -34,10 +35,12 @@
 
 ## Cross-File Intelligence (New)
 
-- 🔍 **Whole-project analyzer:** indexes exports, memo wrappers, and expected prop signatures for every React component, dramatically reducing false positives.
+- 🔍 **Whole-project analyzer:** indexes exports, memo wrappers, and expected prop signatures (prop kinds such as function vs. object vs. literal) for every React component, dramatically reducing false positives.
 - 🙌 **Context-aware `no-unstable-inline-props`:** automatically relaxes warnings for non-memoized components and aligns diagnostics with the prop’s declared kind.
 - 🛟 **Typed `no-unhandled-promises`:** recognizes Promise-returning helpers imported from other modules instead of relying on name-based heuristics alone.
 - 🧱 **Extensible infrastructure:** rules query shared metadata through `getCrossFileAnalyzer`, enabling future performance heuristics that understand the entire project graph.
+
+> **🧬 Perf Fiscal is the only ESLint plugin that tracks memo boundaries, prop kinds, and async flows *across files*—delivering smarter, more precise diagnostics than linters confined to a single file.**
 
 ## Getting Started
 
@@ -169,6 +172,8 @@ const Panel = ({ onSubmit }) => {
 - **TypeScript:** 5.5.x (development dependency aligned with `@typescript-eslint`)
 - **React guidance:** React-specific diagnostics assume React 16.8+ hooks semantics
 
+🧪 Typed test runner: examples and CI simulate real-world React+TS projects with cross-file usage.
+
 ## Development Workflow
 
 ```bash
@@ -188,6 +193,8 @@ Ensure the code compiles, tests pass, and linting remains clean before opening a
 4. Run the pipeline (`npm run lint`, `npm run test`, `npm run build`).
 5. Submit the pull request with a clear explanation of the signal, rationale, and known edge cases.
 
+Need help crafting new rules? Reach out in English or Portuguese—the community is ready to help!
+
 ## License
 
 Perf Fiscal is released under the [MIT License](LICENSE).
@@ -198,4 +205,4 @@ Bring the discipline of a performance engineer to every review. Adopt Perf Fisca
 
 ## Stay in the Loop
 
-💬 Quer novidades? ⭐️ Dê uma estrela e acompanhe o projeto em [ruidosujeira/perf-linter](https://github.com/ruidosujeira/perf-linter) para receber alertas sempre que lançarmos novas heurísticas.
+💬 Want updates? ⭐️ Star and follow [ruidosujeira/perf-linter](https://github.com/ruidosujeira/perf-linter) to get notified when we ship new heuristics.
