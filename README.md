@@ -1,7 +1,6 @@
 # Perf Fiscal
 
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-perf-fiscal.svg?color=informational)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
-[![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-perf-fiscal.svg?color=blue)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
 ![Cross-File Powered](https://img.shields.io/badge/Cross--File-Analysis-blueviolet?style=flat-square)
