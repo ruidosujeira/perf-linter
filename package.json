@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-perf-fiscal",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "ESLint plugin focused on catching performance pitfalls and anti-patterns.",
   "keywords": [
     "eslint",
