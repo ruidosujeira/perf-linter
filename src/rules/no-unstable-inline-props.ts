@@ -155,21 +155,26 @@ function isCallExpressionOfNames(expression: ts.LeftHandSideExpression, names: r
   return false;
 }
 
+function unwrapTypeScriptExpression(expression: ts.Expression): ts.Expression | null {
+  if (
+    ts.isAsExpression(expression) ||
+    ts.isTypeAssertionExpression(expression) ||
+    ts.isParenthesizedExpression(expression) ||
+    ts.isNonNullExpression(expression)
+  ) {
+    return expression.expression;
+  }
+
+  return null;
+}
+
 function stripTypeScriptWrappers(expression: ts.Expression): ts.Expression {
   let current = expression;
+  let next = unwrapTypeScriptExpression(current);
 
-  while (true) {
-    if (ts.isAsExpression(current) || ts.isTypeAssertionExpression(current)) {
-      current = current.expression;
-      continue;
-    }
-
-    if (ts.isParenthesizedExpression(current) || ts.isNonNullExpression(current)) {
-      current = current.expression;
-      continue;
-    }
-
-    break;
+  while (next) {
+    current = next;
+    next = unwrapTypeScriptExpression(current);
   }
 
   return current;
