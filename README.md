@@ -4,8 +4,20 @@
 [![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-perf-fiscal.svg?color=blue)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
-
 [Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. It delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
+
+## Table of Contents
+
+- [Key Capabilities](#key-capabilities)
+- [Getting Started](#getting-started)
+- [Rule Catalog](#rule-catalog)
+- [Configuration Highlights](#configuration-highlights)
+- [Guided Examples](#guided-examples)
+- [Compatibility](#compatibility)
+- [Development Workflow](#development-workflow)
+- [Contributing](#contributing)
+- [License](#license)
+- [Stay in the Loop](#stay-in-the-loop)
 
 ## Key Capabilities
 
@@ -171,5 +183,7 @@ Perf Fiscal is released under the [MIT License](LICENSE).
 ---
 
 Bring the discipline of a performance engineer to every review. Adopt Perf Fiscal to keep your codebase lean, predictable, and production-ready.
+
+## Stay in the Loop
 
 💬 Quer novidades? ⭐️ Dê uma estrela e acompanhe o projeto em [ruidosujeira/perf-linter](https://github.com/ruidosujeira/perf-linter) para receber alertas sempre que lançarmos novas heurísticas.
