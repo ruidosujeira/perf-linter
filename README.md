@@ -1,39 +1,28 @@
-# Perf Fiscal – Performance Auditing for JavaScript & React
+# Perf Fiscal
 
-[![Build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-setup)
-[![Tests](https://img.shields.io/badge/tests-vitest%20run-green)](#development-setup)
-[![License](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
+Perf Fiscal is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. It delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
 
-Perf Fiscal is an ESLint plugin that behaves like a performance auditor living in your lint pipeline. It spots the hotspots that quietly waste CPU, thrash the GC, or sabotage memoization before they reach production.
+## Key Capabilities
 
-- **Optimize common patterns:** Replace heavy array idioms, hoist string work, and prefer efficient primitives.
-- **Protect React hooks:** Surface unstable dependencies that invalidate `useMemo`/`useCallback` caches.
-- **Keep props stable:** Detect inline functions, objects, and spreads that break `React.memo` optimizations.
-- **Avoid production fires:** Flag ReDoS-prone regexes and unhandled async flows that hide failures.
+- Detects inefficient collection and iteration patterns that perform unnecessary work.
+- Guards React memoization by flagging unstable props, dependency arrays, and inline render logic.
+- Prevents runtime stalls caused by catastrophic regular-expression backtracking.
+- Surfaces unhandled asynchronous flows that silently swallow failures.
+- Provides both classic and flat ESLint configuration presets for rapid adoption.
 
-## Table of Contents
+## Getting Started
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Compatibility](#compatibility)
-- [Rule Overview](#rule-overview)
-- [Rule Spotlights](#rule-spotlights)
-- [Development Setup](#development-setup)
-- [Contributing](#contributing)
-- [Resources](#resources)
-- [Roadmap](#roadmap)
-
-## Installation
+### Installation
 
 ```bash
 npm install --save-dev eslint eslint-plugin-perf-fiscal
 # or
+yarn add --dev eslint eslint-plugin-perf-fiscal
+# or
 pnpm add -D eslint eslint-plugin-perf-fiscal
 ```
 
-## Quick Start
-
-**Flat config (ESLint >=8.57):**
+### Flat Config (ESLint ≥8.57)
 
 ```js
 import perfFiscal from 'eslint-plugin-perf-fiscal';
@@ -43,7 +32,7 @@ export default [
 ];
 ```
 
-**Classic `.eslintrc.cjs`:**
+### Classic Config (`.eslintrc.*`)
 
 ```js
 module.exports = {
@@ -51,7 +40,7 @@ module.exports = {
 };
 ```
 
-You can also cherry-pick rules:
+### Targeting Specific Rules
 
 ```js
 module.exports = {
@@ -67,102 +56,91 @@ module.exports = {
 };
 ```
 
-## Compatibility
+## Rule Catalog
 
-- **Node.js:** >=18
-- **ESLint:** ^8.57.0 or ^9.0.0
-- **TypeScript (dev tooling):** 5.5.x (aligned with @typescript-eslint)
-- **React guidance:** Framework-agnostic overall, but `no-unstable-usememo-deps` assumes hooks semantics from React 16.8+
+Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
 
-## Rule Overview
-
-| Rule | Detects | Quick Fix | Docs |
+| Rule | Detects | Recommended Action | Documentation |
 | --- | --- | --- | --- |
-| `prefer-array-some` | `filter(...).length` checks that walk the entire array | Switch to `Array.prototype.some` | [link](docs/rules/prefer-array-some.md) |
-| `prefer-for-of` | Using `map`/`forEach` purely for side effects | Replace with `for...of` | [link](docs/rules/prefer-for-of.md) |
-| `prefer-object-hasown` | Legacy `hasOwnProperty.call` patterns | Use `Object.hasOwn` | [link](docs/rules/prefer-object-hasown.md) |
-| `no-unstable-usememo-deps` | Inline objects/arrays in dependency arrays | Memoize or hoist dependencies | [link](docs/rules/no-unstable-usememo-deps.md) |
-| `no-redos-regex` | RegExes prone to catastrophic backtracking | Rewrite without overlapping quantifiers | [link](docs/rules/no-redos-regex.md) |
-| `detect-unnecessary-rerenders` | Inline callbacks passed to memoized children | Hoist logic or wrap in `useCallback` | [link](docs/rules/detect-unnecessary-rerenders.md) |
-| `no-unhandled-promises` | Fire-and-forget async work | Await or attach handlers | [link](docs/rules/no-unhandled-promises.md) |
-| `prefer-promise-all-settled` | `Promise.all(...).catch(...)` expecting partial failures | Use `Promise.allSettled` | [link](docs/rules/prefer-promise-all-settled.md) |
-| `no-expensive-computations-in-render` | Heavy work inside render paths | Memoize with `useMemo` or hoist | [link](docs/rules/no-expensive-computations-in-render.md) |
-| `no-expensive-split-replace` | Repeated `split`/`replace` in tight loops | Precompute and reuse results | [link](docs/rules/no-expensive-split-replace.md) |
-| `no-unstable-inline-props` | Inline props, spreads, or aliases that churn references | Hoist or memoize props before passing | [link](docs/rules/no-unstable-inline-props.md) |
+| `perf-fiscal/detect-unnecessary-rerenders` | Inline handlers passed to memoized children | Hoist callbacks or wrap with `useCallback` | [docs/rules/detect-unnecessary-rerenders.md](docs/rules/detect-unnecessary-rerenders.md) |
+| `perf-fiscal/no-expensive-computations-in-render` | Heavy synchronous work executed during renders | Move logic into `useMemo` or outside the component | [docs/rules/no-expensive-computations-in-render.md](docs/rules/no-expensive-computations-in-render.md) |
+| `perf-fiscal/no-expensive-split-replace` | Repeated string `split`/`replace` inside hot loops | Pre-compute and reuse results | [docs/rules/no-expensive-split-replace.md](docs/rules/no-expensive-split-replace.md) |
+| `perf-fiscal/no-redos-regex` | Regular expressions prone to catastrophic backtracking | Rewrite expression or add explicit bounds | [docs/rules/no-redos-regex.md](docs/rules/no-redos-regex.md) |
+| `perf-fiscal/no-unhandled-promises` | Ignored Promise rejections | Await or attach `.catch`/`.then` handlers | [docs/rules/no-unhandled-promises.md](docs/rules/no-unhandled-promises.md) |
+| `perf-fiscal/no-unstable-inline-props` | Inline functions/objects and prop spreads that churn references | Hoist or memoize prop values before passing | [docs/rules/no-unstable-inline-props.md](docs/rules/no-unstable-inline-props.md) |
+| `perf-fiscal/no-unstable-usememo-deps` | Non-stable values in dependency arrays | Memoize dependencies or move them outside the render | [docs/rules/no-unstable-usememo-deps.md](docs/rules/no-unstable-usememo-deps.md) |
+| `perf-fiscal/prefer-array-some` | `filter(...).length` checks used for existence | Replace with `Array.prototype.some` | [docs/rules/prefer-array-some.md](docs/rules/prefer-array-some.md) |
+| `perf-fiscal/prefer-for-of` | Using `map`/`forEach` purely for side effects | Switch to `for...of` for clarity and speed | [docs/rules/prefer-for-of.md](docs/rules/prefer-for-of.md) |
+| `perf-fiscal/prefer-object-hasown` | Legacy `hasOwnProperty.call` patterns | Use `Object.hasOwn` | [docs/rules/prefer-object-hasown.md](docs/rules/prefer-object-hasown.md) |
+| `perf-fiscal/prefer-promise-all-settled` | `Promise.all` expecting partial failures | Migrate to `Promise.allSettled` | [docs/rules/prefer-promise-all-settled.md](docs/rules/prefer-promise-all-settled.md) |
 
-## Rule Spotlights
+## Configuration Highlights
 
-### Stop allocating full arrays for existence checks
+- **Flat vs. classic presets:** Use `perfFiscal.configs.recommended` for flat configs or `plugin:perf-fiscal/recommended` for classic configs.
+- **Severity control:** Adjust rule severities (`off`, `warn`, `error`) to match your governance model.
+- **Rule options:** Some rules expose targeted settings. Review each rule’s documentation for schema definitions. Example:
 
-```ts
-// Before: walks the whole list and allocates
-const hasAny = users.filter(isActive).length > 0;
+  ```js
+  'perf-fiscal/no-unstable-inline-props': ['warn', {
+    ignoreProps: ['className', 'data-testid'],
+    checkFunctions: true,
+    checkObjects: true,
+    checkSpreads: true
+  }]
+  ```
 
-// After: short-circuits on the first match
-const hasAny = users.some(isActive);
-```
+## Guided Examples
 
-### Keep React renders pure
-
-```tsx
-// Before: re-creates options every render and busts caches
-const Child = ({ items }) => {
-  const options = items.filter(isExpensive);
-  return <List options={options} />;
-};
-
-// After: memoize expensive work once
-const Child = ({ items }) => {
-  const options = useMemo(() => items.filter(isExpensive), [items]);
-  return <List options={options} />;
-};
-```
-
-### Hoist string work out of hot loops
-### Memoize props before passing them down
+### Stabilize React Callbacks
 
 ```tsx
-// Before: spread creates new callbacks each render
-const Parent = ({ onClick }) => (
-  <Child
-    {...{
-      onClick: () => {
-        onClick();
-      }
-    }}
-  />
-);
+// Before: re-creates callbacks every render
+const Parent = () => <Child onSelect={() => dispatch()} />;
 
-// After: memoize the prop bag once
-const Parent = ({ onClick }) => {
-  const stableProps = useMemo(
-    () => ({
-      onClick: () => {
-        onClick();
-      }
-    }),
-    [onClick]
-  );
-
-  return <Child {...stableProps} />;
+// After: keep reference identity stable
+const Parent = () => {
+  const onSelect = useCallback(() => dispatch(), []);
+  return <Child onSelect={onSelect} />;
 };
 ```
 
+### Hoist Heavy String Operations
+
 ```ts
-// Before: split runs for every iteration
-for (const item of items) {
-  const segments = item.path.split('/');
-  consume(segments);
+// Before: expensive split executed for each item
+for (const record of records) {
+  const parts = record.path.split('/');
+  visit(parts);
 }
 
 // After: compute once and reuse
-const segments = path.split('/');
-for (const item of items) {
-  consume(segments);
+const parts = basePath.split('/');
+for (const record of records) {
+  visit(parts);
 }
 ```
 
-## Development Setup
+### Memoize Prop Bags Before Spreading
+
+```tsx
+// Before: spread introduces unstable references
+const Panel = ({ onSubmit }) => <Form {...{ onSubmit: () => onSubmit() }} />;
+
+// After: memoize the spread payload
+const Panel = ({ onSubmit }) => {
+  const formProps = useMemo(() => ({ onSubmit: () => onSubmit() }), [onSubmit]);
+  return <Form {...formProps} />;
+};
+```
+
+## Compatibility
+
+- **Node.js:** 18+
+- **ESLint:** ^8.57.0 or ^9.x
+- **TypeScript:** 5.5.x (development dependency aligned with `@typescript-eslint`)
+- **React guidance:** React-specific diagnostics assume React 16.8+ hooks semantics
+
+## Development Workflow
 
 ```bash
 npm install
@@ -171,30 +149,20 @@ npm run test
 npm run build
 ```
 
-Lint before submitting to catch style regressions flagged by our own rules.
+Ensure the code compiles, tests pass, and linting remains clean before opening a pull request.
 
 ## Contributing
 
-1. **Pitch the heuristic** – open an issue describing the performance smell and expected false positives.
-2. **Implement the rule** – add it under `src/rules/`, export from `src/index.ts`, and document in `docs/rules/<rule-name>.md`.
-3. **Cover the edges** – add positive and negative fixtures in `tests/rules/` via the shared RuleTester.
-4. **Run the pipeline** – execute `npm run lint`, `npm run test`, and `npm run build` before sending a PR.
-5. **Explain the signal** – include motivation, any caveats, and sample lint output in the PR description.
+1. Open an issue describing the performance heuristic, proposed signal, and acceptable false positives.
+2. Implement the rule under `src/rules/`, add coverage in `tests/rules/`, and document behavior in `docs/rules/<rule-name>.md`.
+3. Export the rule from `src/index.ts`, update recommended configs if appropriate, and link the documentation.
+4. Run the pipeline (`npm run lint`, `npm run test`, `npm run build`).
+5. Submit the pull request with a clear explanation of the signal, rationale, and known edge cases.
 
-Keeping this loop tight ensures the “auditor” stays trustworthy and low-noise.
+## License
 
-## Resources
-
-- [React Docs – `useMemo`](https://react.dev/reference/react/useMemo)
-- [MDN – Regular Expression Performance](https://developer.mozilla.org/docs/Web/JavaScript/Guide/Regular_expressions/Performance_considerations)
-- [V8 Blog – Fast Array Iteration Patterns](https://v8.dev/blog/elements-kinds)
-
-## Roadmap
-
-- Detect additional slow iteration idioms in hot loops.
-- Offer autofixes for safe regex rewrites.
-- Expand React diagnostics around `useCallback` and selector memoization.
+Perf Fiscal is released under the [MIT License](LICENSE).
 
 ---
 
-Bring the mindset of a performance engineer into every review. Install Perf Fiscal and keep your code lean.
+Bring the discipline of a performance engineer to every review. Adopt Perf Fiscal to keep your codebase lean, predictable, and production-ready.
