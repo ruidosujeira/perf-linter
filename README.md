@@ -8,6 +8,7 @@ Perf Fiscal is an ESLint plugin that behaves like a performance auditor living i
 
 - **Optimize common patterns:** Replace heavy array idioms, hoist string work, and prefer efficient primitives.
 - **Protect React hooks:** Surface unstable dependencies that invalidate `useMemo`/`useCallback` caches.
+- **Keep props stable:** Detect inline functions, objects, and spreads that break `React.memo` optimizations.
 - **Avoid production fires:** Flag ReDoS-prone regexes and unhandled async flows that hide failures.
 
 ## Table of Contents
@@ -57,7 +58,11 @@ module.exports = {
   plugins: ['perf-fiscal'],
   rules: {
     'perf-fiscal/no-expensive-split-replace': 'warn',
-    'perf-fiscal/prefer-array-some': 'error'
+    'perf-fiscal/prefer-array-some': 'error',
+    'perf-fiscal/no-unstable-inline-props': ['warn', {
+      ignoreProps: ['className'],
+      checkSpreads: false
+    }]
   }
 };
 ```
@@ -83,6 +88,7 @@ module.exports = {
 | `prefer-promise-all-settled` | `Promise.all(...).catch(...)` expecting partial failures | Use `Promise.allSettled` | [link](docs/rules/prefer-promise-all-settled.md) |
 | `no-expensive-computations-in-render` | Heavy work inside render paths | Memoize with `useMemo` or hoist | [link](docs/rules/no-expensive-computations-in-render.md) |
 | `no-expensive-split-replace` | Repeated `split`/`replace` in tight loops | Precompute and reuse results | [link](docs/rules/no-expensive-split-replace.md) |
+| `no-unstable-inline-props` | Inline props, spreads, or aliases that churn references | Hoist or memoize props before passing | [link](docs/rules/no-unstable-inline-props.md) |
 
 ## Rule Spotlights
 
@@ -113,6 +119,34 @@ const Child = ({ items }) => {
 ```
 
 ### Hoist string work out of hot loops
+### Memoize props before passing them down
+
+```tsx
+// Before: spread creates new callbacks each render
+const Parent = ({ onClick }) => (
+  <Child
+    {...{
+      onClick: () => {
+        onClick();
+      }
+    }}
+  />
+);
+
+// After: memoize the prop bag once
+const Parent = ({ onClick }) => {
+  const stableProps = useMemo(
+    () => ({
+      onClick: () => {
+        onClick();
+      }
+    }),
+    [onClick]
+  );
+
+  return <Child {...stableProps} />;
+};
+```
 
 ```ts
 // Before: split runs for every iteration
