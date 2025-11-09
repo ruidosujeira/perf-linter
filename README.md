@@ -41,6 +41,16 @@
 
 > **🧬 Perf Fiscal is the only ESLint plugin that tracks memo boundaries, prop kinds, and async flows *across files*—delivering smarter, more precise diagnostics than linters confined to a single file.**
 
+### Cross-File Warning Snapshot
+
+```text
+tests/fixtures/cross-file/consumer.tsx:21:7
+  21:7  warning  perf-fiscal/no-unhandled-promises  Unhandled Promise: await this call or return/chain it to avoid swallowing rejections.
+          • Origin: useDataSource (exported from tests/fixtures/cross-file/components.tsx)
+```
+
+That single diagnostic traces the async helper to its source file, proving the analyzer understands memo boundaries and async flows beyond the current module.
+
 ## Getting Started
 
 ### Installation
@@ -171,7 +181,7 @@ const Panel = ({ onSubmit }) => {
 - **TypeScript:** 5.5.x (development dependency aligned with `@typescript-eslint`)
 - **React guidance:** React-specific diagnostics assume React 16.8+ hooks semantics
 
-🧪 Typed test runner: examples and CI simulate real-world React+TS projects with cross-file usage.
+🧪 Typed RuleTester: our [typed runner](tests/utils/rule-tester.ts) and CI simulate real-world React+TS projects with cross-file usage, so every rule ships with analyzer-backed coverage.
 
 ## Development Workflow
 
