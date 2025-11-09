@@ -1,7 +1,11 @@
+import fs from 'fs';
+import path from 'path';
 import rule from '../../src/rules/no-unhandled-promises';
-import { createTSRuleTester } from '../utils/rule-tester';
+import { createTSRuleTester, createTypedRuleTester } from '../utils/rule-tester';
 
 const ruleTester = createTSRuleTester();
+const fixturesDir = path.resolve(__dirname, '../fixtures');
+const typedRuleTester = createTypedRuleTester(fixturesDir);
 
 ruleTester.run('no-unhandled-promises', rule, {
   valid: [
@@ -52,6 +56,36 @@ ruleTester.run('no-unhandled-promises', rule, {
         new Promise(resolve => resolve());
       `,
       errors: [{ messageId: 'unhandledPromise' }]
+    }
+  ]
+});
+
+typedRuleTester.run('no-unhandled-promises (type-aware)', rule, {
+  valid: [
+    {
+      filename: path.join(fixturesDir, 'no-unhandled-promises/consumer-handled.ts'),
+      code: fs.readFileSync(
+        path.join(fixturesDir, 'no-unhandled-promises/consumer-handled.ts'),
+        'utf8'
+      )
+    }
+  ],
+  invalid: [
+    {
+      filename: path.join(fixturesDir, 'no-unhandled-promises/consumer-unhandled.ts'),
+      code: fs.readFileSync(
+        path.join(fixturesDir, 'no-unhandled-promises/consumer-unhandled.ts'),
+        'utf8'
+      ),
+      errors: [
+        { messageId: 'unhandledPromise', line: 4 },
+        { messageId: 'unhandledPromise', line: 5 }
+      ]
+    },
+    {
+      filename: path.join(fixturesDir, 'cross-file/consumer.tsx'),
+      code: fs.readFileSync(path.join(fixturesDir, 'cross-file/consumer.tsx'), 'utf8'),
+      errors: [{ messageId: 'unhandledPromise', line: 21 }]
     }
   ]
 });

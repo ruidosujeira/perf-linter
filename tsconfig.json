@@ -11,8 +11,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-  "rootDir": ".",
-  "outDir": "dist",
+    "rootDir": ".",
+    "outDir": "dist",
     "types": ["node"]
   },
   "include": ["src", "tests"],

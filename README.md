@@ -5,11 +5,14 @@
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
 
-[Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. It delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
+[Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. Powered by a cross-file TypeScript analysis engine, it delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
+
+> 💡 **First in class:** Perf Fiscal is the first performance linting toolkit to correlate multi-file signals in real time, using the TypeScript checker to understand components, props, and async flows across your entire project.
 
 ## Table of Contents
 
 - [Key Capabilities](#key-capabilities)
+- [Cross-File Intelligence (New)](#cross-file-intelligence-new)
 - [Getting Started](#getting-started)
 - [Rule Catalog](#rule-catalog)
 - [Configuration Highlights](#configuration-highlights)
@@ -24,9 +27,17 @@
 
 - 🚦 Detects inefficient collection and iteration patterns that perform unnecessary work.
 - 🧠 Guards React memoization by flagging unstable props, dependency arrays, and inline render logic.
+- 🛰️ Correlates symbol metadata across files to understand memoization boundaries, prop kinds, and async contracts.
 - 🔥 Prevents runtime stalls caused by catastrophic regular-expression backtracking.
 - ⚡️ Surfaces unhandled asynchronous flows that silently swallow failures.
 - ✨ Provides both classic and flat ESLint configuration presets for rapid adoption.
+
+## Cross-File Intelligence (New)
+
+- 🔍 **Whole-project analyzer:** indexes exports, memo wrappers, and expected prop signatures for every React component, dramatically reducing false positives.
+- 🙌 **Context-aware `no-unstable-inline-props`:** automatically relaxes warnings for non-memoized components and aligns diagnostics with the prop’s declared kind.
+- 🛟 **Typed `no-unhandled-promises`:** recognizes Promise-returning helpers imported from other modules instead of relying on name-based heuristics alone.
+- 🧱 **Extensible infrastructure:** rules query shared metadata through `getCrossFileAnalyzer`, enabling future performance heuristics that understand the entire project graph.
 
 ## Getting Started
 

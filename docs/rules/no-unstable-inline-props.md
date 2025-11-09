@@ -6,7 +6,7 @@ Flags unstable functions, arrays, or objects passed as props to React components
 
 React compares props by reference. Inline functions or object literals recreate new references on every render, forcing memoized children to rerender and breaking `React.memo`/`useMemo` optimizations. Hoisting these values or wrapping them with `useCallback`/`useMemo` keeps references stable and avoids wasted work.
 
-This rule also looks beyond direct attribute assignments. It tracks values created through destructuring, aliasing, and object spread expressions and, when type information is available, uses the TypeScript checker to follow factories and helpers across module boundaries.
+This rule also looks beyond direct attribute assignments. It tracks values created through destructuring, aliasing, and object spread expressions and, when type information is available, uses the TypeScript checker to follow factories and helpers across module boundaries. With cross-file analysis enabled, the rule inspects the target component to understand whether it is memoized and which prop kinds it expects, allowing it to skip reports for non-memoized targets by default and to align warnings with the component’s declared prop types.
 
 ## Options
 
@@ -16,7 +16,8 @@ This rule also looks beyond direct attribute assignments. It tracks values creat
 		"ignoreProps": ["className"],
 		"checkFunctions": true,
 		"checkObjects": true,
-		"checkSpreads": true
+		"checkSpreads": true,
+		"relaxForNonMemoized": true
 	}]
 }
 ```
@@ -25,6 +26,7 @@ This rule also looks beyond direct attribute assignments. It tracks values creat
 - `checkFunctions` (`boolean`, default `true`): Report inline or unstable function props.
 - `checkObjects` (`boolean`, default `true`): Report inline or unstable object/array props.
 - `checkSpreads` (`boolean`, default `true`): Report spreads that introduce unstable props.
+- `relaxForNonMemoized` (`boolean`, default `true`): When `true`, suppress reports for inline values passed to components that are detected as non-memoized (e.g., plain functional components). Disable this if you want warnings regardless of the target component’s memoization status.
 
 ## Invalid
 

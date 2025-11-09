@@ -1,4 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, TSESTree } from '@typescript-eslint/utils';
+import * as ts from 'typescript';
+import { AnalyzerServices, getCrossFileAnalyzer } from '../analysis/cross-file-analyzer';
 import { createRule } from '../utils/create-rule';
 
 const KNOWN_PROMISE_IDENTIFIERS = new Set(['fetch', 'axios', 'Promise']);
@@ -51,17 +53,38 @@ function isAsyncIdentifier(
   context: TSESLint.RuleContext<'unhandledPromise', []>,
   identifier: TSESTree.Identifier
 ): boolean {
-  let scope: TSESLint.Scope.Scope | null = context.getScope();
+  const sourceCode = context.getSourceCode();
+  const manager = sourceCode.scopeManager;
+
+  const fallbackAcquire = (node: TSESTree.Node | null): TSESLint.Scope.Scope | null => {
+    if (!manager) {
+      return null;
+    }
+
+    let current: TSESTree.Node | null = node;
+    while (current) {
+      const scope = manager.acquire(current);
+      if (scope) {
+        return scope;
+      }
+      current = current.parent ?? null;
+    }
+
+    return manager.globalScope ?? null;
+  };
+
+  let scope: TSESLint.Scope.Scope | null =
+    sourceCode.getScope?.(identifier) ?? fallbackAcquire(identifier);
 
   while (scope) {
     const variable = scope.set.get(identifier.name);
     if (variable) {
-      if (variable.defs.some(def => isAsyncFunctionNode(def.node))) {
+      if (variable.defs.some((def: TSESLint.Scope.Definition) => isAsyncFunctionNode(def.node))) {
         return true;
       }
       return false;
     }
-    scope = scope.upper;
+    scope = scope.upper ?? null;
   }
 
   return KNOWN_PROMISE_IDENTIFIERS.has(identifier.name);
@@ -69,8 +92,18 @@ function isAsyncIdentifier(
 
 function isPromiseLikeCall(
   context: TSESLint.RuleContext<'unhandledPromise', []>,
-  node: TSESTree.CallExpression
+  node: TSESTree.CallExpression,
+  analyzerServices: AnalyzerServices | null
 ): boolean {
+  if (analyzerServices) {
+    const tsNode = analyzerServices.getTypeScriptNode(node);
+    if (tsNode && ts.isCallExpression(tsNode)) {
+      if (analyzerServices.analyzer.isPromiseLikeExpression(tsNode)) {
+        return true;
+      }
+    }
+  }
+
   const callee = node.callee;
 
   if (callee.type === AST_NODE_TYPES.Identifier) {
@@ -95,7 +128,19 @@ function isPromiseLikeCall(
   return false;
 }
 
-function isPromiseLikeNewExpression(node: TSESTree.NewExpression): boolean {
+function isPromiseLikeNewExpression(
+  node: TSESTree.NewExpression,
+  analyzerServices: AnalyzerServices | null
+): boolean {
+  if (analyzerServices) {
+    const tsNode = analyzerServices.getTypeScriptNode(node);
+    if (tsNode && ts.isNewExpression(tsNode)) {
+      if (analyzerServices.analyzer.isPromiseLikeExpression(tsNode)) {
+        return true;
+      }
+    }
+  }
+
   return node.callee.type === AST_NODE_TYPES.Identifier && node.callee.name === 'Promise';
 }
 
@@ -175,10 +220,12 @@ export default createRule<[], 'unhandledPromise'>({
     }
   },
   defaultOptions: [],
-  create(context) {
+  create(context: TSESLint.RuleContext<'unhandledPromise', []>) {
+    const analyzerServices = getCrossFileAnalyzer(context);
+
     return {
-      CallExpression(node) {
-        if (!isPromiseLikeCall(context, node)) {
+      CallExpression(node: TSESTree.CallExpression) {
+        if (!isPromiseLikeCall(context, node, analyzerServices)) {
           return;
         }
 
@@ -189,8 +236,8 @@ export default createRule<[], 'unhandledPromise'>({
           });
         }
       },
-      NewExpression(node) {
-        if (!isPromiseLikeNewExpression(node)) {
+      NewExpression(node: TSESTree.NewExpression) {
+        if (!isPromiseLikeNewExpression(node, analyzerServices)) {
           return;
         }
 
