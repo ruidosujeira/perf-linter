@@ -4,6 +4,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/eslint-plugin-perf-fiscal.svg?color=blue)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
+
 [Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. It delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
 
 ## Table of Contents
