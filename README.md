@@ -1,5 +1,7 @@
 # Perf Fiscal
 
+[Bringing cross-file intelligence to JavaScript and React—performance linting, evolved.]
+
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-perf-fiscal.svg?color=informational)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
@@ -50,6 +52,22 @@ tests/fixtures/cross-file/consumer.tsx:21:7
 ```
 
 That single diagnostic traces the async helper to its source file, proving the analyzer understands memo boundaries and async flows beyond the current module.
+
+## Sample Output
+
+When running `perf-fiscal/no-unstable-inline-props`, you'll see context-aware feedback like:
+
+```text
+src/pages/Profile.tsx:12:13: [perf-fiscal/no-unstable-inline-props] Passing inline function to memoized child <Child onSelect={...}/> — wrap in useCallback for stable renders (expected prop kind: function)
+```
+
+And for cross-file async flow detection:
+
+```text
+src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise returned from helper `fetchUserData` (imported from utils/http.ts) — consider awaiting or handling rejections.
+```
+
+These examples show how analyzer-backed diagnostics include origin and expected prop-kind, making fixes faster and more confident.
 
 ## Getting Started
 
