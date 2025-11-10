@@ -230,9 +230,13 @@ npm install
 npm run lint
 npm run test
 npm run build
+# Optional: profile rule performance before/after changes
+npm run benchmark
 ```
 
 Ensure the code compiles, tests pass, and linting remains clean before opening a pull request.
+
+See [`docs/benchmarking.md`](docs/benchmarking.md) for details about the benchmark harness and reference projects it exercises.
 
 ## Contributing
 
