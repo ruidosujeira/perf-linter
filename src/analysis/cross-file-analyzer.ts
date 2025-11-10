@@ -516,6 +516,136 @@ export class CrossFileAnalyzer {
     const fileName = normalizeFileName(sourceFile.fileName);
     const attrs = (node.attributes && (node.attributes as ts.JsxAttributes).properties) || [];
 
+    const pushUsage = (
+      propName: string,
+      rangeNode: ts.Node,
+      argumentText: string | null,
+      isInline: boolean,
+      isIdentifier: boolean
+    ): void => {
+      out.push({
+        fileName,
+        range: {
+          start: rangeNode.getStart(sourceFile, false),
+          end: rangeNode.getEnd()
+        },
+        propName,
+        argumentText,
+        isInline,
+        isIdentifier
+      });
+    };
+
+    const unwrapExpression = (expr: ts.Expression): ts.Expression => {
+      let current: ts.Expression = expr;
+      while (ts.isParenthesizedExpression(current)) {
+        current = current.expression;
+      }
+      return current;
+    };
+
+    const isPrimitiveLiteral = (expr: ts.Expression): boolean => {
+      const node = unwrapExpression(expr);
+      if (ts.isLiteralExpression(node)) {
+        return true;
+      }
+
+      switch (node.kind) {
+        case ts.SyntaxKind.TrueKeyword:
+        case ts.SyntaxKind.FalseKeyword:
+        case ts.SyntaxKind.NullKeyword:
+        case ts.SyntaxKind.UndefinedKeyword:
+          return true;
+        default:
+          break;
+      }
+
+      if (ts.isPrefixUnaryExpression(node)) {
+        return isPrimitiveLiteral(node.operand);
+      }
+
+      return false;
+    };
+
+    const isInlineExpression = (expr: ts.Expression): boolean => {
+      const node = unwrapExpression(expr);
+      if (
+        ts.isArrowFunction(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isObjectLiteralExpression(node) ||
+        ts.isArrayLiteralExpression(node) ||
+        ts.isNewExpression(node) ||
+        ts.isClassExpression(node) ||
+        ts.isTemplateExpression(node)
+      ) {
+        return true;
+      }
+
+      if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) {
+        return true;
+      }
+
+      return false;
+    };
+
+    const extractExpressionDetails = (
+      expr: ts.Expression
+    ): { argumentText: string; isInline: boolean; isIdentifier: boolean } => {
+      const unwrapped = unwrapExpression(expr);
+      const isIdentifier = ts.isIdentifier(unwrapped);
+      const isInline = !isIdentifier && !isPrimitiveLiteral(unwrapped) && isInlineExpression(unwrapped);
+
+      return {
+        argumentText: expr.getText(sourceFile),
+        isInline,
+        isIdentifier
+      };
+    };
+
+    const handleObjectLiteral = (literal: ts.ObjectLiteralExpression): void => {
+      for (const property of literal.properties) {
+        if (ts.isPropertyAssignment(property)) {
+          const name = property.name.getText(sourceFile);
+          const initializer = property.initializer;
+          if (!initializer) {
+            continue;
+          }
+
+          const { argumentText, isInline, isIdentifier } = extractExpressionDetails(initializer);
+          pushUsage(name, initializer, argumentText, isInline, isIdentifier);
+        } else if (ts.isShorthandPropertyAssignment(property)) {
+          const name = property.name.getText(sourceFile);
+          const rangeNode = property.name;
+          pushUsage(name, rangeNode, property.name.getText(sourceFile), false, true);
+        } else if (
+          ts.isMethodDeclaration(property) ||
+          ts.isGetAccessorDeclaration(property) ||
+          ts.isSetAccessorDeclaration(property)
+        ) {
+          const name = property.name.getText(sourceFile);
+          pushUsage(name, property, property.getText(sourceFile), true, false);
+        } else if (ts.isSpreadAssignment(property)) {
+          handleSpread(property.expression, property);
+        }
+      }
+    };
+
+    const handleSpread = (expression: ts.Expression | undefined, rangeNode: ts.Node): void => {
+      if (!expression) {
+        pushUsage('<<spread>>', rangeNode, null, false, false);
+        return;
+      }
+
+      const unwrapped = unwrapExpression(expression);
+      if (ts.isObjectLiteralExpression(unwrapped)) {
+        handleObjectLiteral(unwrapped);
+        return;
+      }
+
+      const details = extractExpressionDetails(expression);
+      pushUsage('<<spread>>', expression, details.argumentText, false, details.isIdentifier);
+    };
+
     for (const attr of attrs) {
       if (ts.isJsxAttribute(attr)) {
         const name = ts.isIdentifier(attr.name) ? attr.name.text : attr.name.getText(sourceFile);
@@ -527,44 +657,16 @@ export class CrossFileAnalyzer {
 
         if (attr.initializer && ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
           const expr = attr.initializer.expression;
-          argumentText = expr.getText(sourceFile);
+          const details = extractExpressionDetails(expr);
+          argumentText = details.argumentText;
+          isInline = details.isInline;
+          isIdentifier = details.isIdentifier;
           rangeNode = expr;
-
-          if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr) || ts.isObjectLiteralExpression(expr) || ts.isArrayLiteralExpression(expr) || ts.isNewExpression(expr)) {
-            isInline = true;
-          }
-
-          if (ts.isIdentifier(expr)) {
-            isIdentifier = true;
-          }
         }
 
-        out.push({
-          fileName,
-          range: {
-            start: rangeNode.getStart(sourceFile, false),
-            end: rangeNode.getEnd()
-          },
-          propName: name,
-          argumentText,
-          isInline,
-          isIdentifier
-        });
+        pushUsage(name, rangeNode, argumentText, isInline, isIdentifier);
       } else if (ts.isJsxSpreadAttribute(attr)) {
-        // spread - record as special prop with the spread text
-        const text = attr.expression ? attr.expression.getText(sourceFile) : null;
-        const exprNode = attr.expression ?? attr;
-        out.push({
-          fileName,
-          range: {
-            start: exprNode.getStart(sourceFile, false),
-            end: exprNode.getEnd()
-          },
-          propName: '<<spread>>',
-          argumentText: text,
-          isInline: false,
-          isIdentifier: attr.expression ? ts.isIdentifier(attr.expression) : false
-        });
+        handleSpread(attr.expression ?? undefined, attr.expression ?? attr);
       }
     }
 

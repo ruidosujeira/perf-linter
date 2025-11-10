@@ -1,7 +1,7 @@
 import path from 'path';
 import ts from 'typescript';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { CrossFileAnalyzer, UsageRecord } from '../../src/analysis/cross-file-analyzer';
+import { CrossFileAnalyzer, PropUsageDetail, UsageRecord } from '../../src/analysis/cross-file-analyzer';
 
 const fixturesDir = path.resolve(__dirname, '../fixtures');
 const tsconfigPath = path.join(fixturesDir, 'tsconfig.json');
@@ -95,5 +95,44 @@ describe('CrossFileAnalyzer', () => {
 
     const memoExport = summary?.exports.find(record => record.exportName === 'MemoFancyButton');
     expect(memoExport?.symbol.isMemoizedComponent).toBe(true);
+  });
+
+  it('collects prop usage details for object literal spreads', () => {
+    const componentsPath = path.join(fixturesDir, 'cross-file/components.tsx');
+    const fancyButton = analyzer.findExportedSymbol(componentsPath, 'FancyButton');
+    expect(fancyButton).not.toBeNull();
+
+    // Trigger usage analysis so prop usages are populated.
+    fancyButton?.getUsages();
+
+    const internal = analyzer as unknown as { componentPropUsages: Map<ts.Symbol, PropUsageDetail[]> };
+    const symbol = fancyButton?.getInternalSymbol();
+    expect(symbol).toBeTruthy();
+
+    const usages = symbol ? internal.componentPropUsages.get(symbol) ?? [] : [];
+    const spreadUsages = usages.filter(usage => usage.fileName.endsWith('cross-file/spread-consumer.tsx'));
+    expect(spreadUsages.length).toBeGreaterThan(0);
+
+    const inlineUsage = spreadUsages.find(usage => usage.argumentText?.includes('inline spread handler'));
+    expect(inlineUsage?.isInline).toBe(true);
+    expect(inlineUsage?.isIdentifier).toBe(false);
+
+    const nestedInlineUsage = spreadUsages.find(usage => usage.argumentText?.includes('nested inline spread'));
+    expect(nestedInlineUsage?.isInline).toBe(true);
+    expect(nestedInlineUsage?.isIdentifier).toBe(false);
+
+    const identifierUsage = spreadUsages.find(usage => usage.argumentText === 'sharedHandler');
+    expect(identifierUsage?.isInline).toBe(false);
+    expect(identifierUsage?.isIdentifier).toBe(true);
+
+    const primitiveUsage = spreadUsages.find(usage => usage.argumentText === "'spread label'");
+    expect(primitiveUsage?.isInline).toBe(false);
+    expect(primitiveUsage?.isIdentifier).toBe(false);
+
+    const nestedIdentifierSpread = spreadUsages.find(
+      usage => usage.propName === '<<spread>>' && usage.argumentText === 'forwardedProps'
+    );
+    expect(nestedIdentifierSpread?.isInline).toBe(false);
+    expect(nestedIdentifierSpread?.isIdentifier).toBe(true);
   });
 });
