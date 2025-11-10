@@ -236,11 +236,24 @@ Ensure the code compiles, tests pass, and linting remains clean before opening a
 
 ## Contributing
 
+### Join the conversation
+- Head to [GitHub Discussions](https://github.com/ruidosujeira/perf-linter/discussions) to ask questions, propose ideas, or respond to the weekly audit summary. Start with the "Community check-in" template so maintainers know how to support you.
+- Subscribe to announcements to be pinged when a new audit report drops or when we schedule community syncs.
+
+### Find a first issue
+- Browse issues labeled [`good first issue`](https://github.com/ruidosujeira/perf-linter/labels/good%20first%20issue) for bite-sized tasks that build familiarity with the codebase.
+- Prefer guidance in Portuguese? Filter by the [`boa primeira contribuição`](https://github.com/ruidosujeira/perf-linter/labels/boa%20primeira%20contribui%C3%A7%C3%A3o) label—each ticket outlines clear steps, acceptance criteria, and mentors willing to help.
+
+### Ship changes confidently
 1. Open an issue describing the performance heuristic, proposed signal, and acceptable false positives.
 2. Implement the rule under `src/rules/`, add coverage in `tests/rules/`, and document behavior in `docs/rules/<rule-name>.md`.
 3. Export the rule from `src/index.ts`, update recommended configs if appropriate, and link the documentation.
 4. Run the pipeline (`npm run lint`, `npm run test`, `npm run build`).
 5. Submit the pull request with a clear explanation of the signal, rationale, and known edge cases.
+
+### Follow the weekly audit reports
+- Every Monday we publish a community audit using the [weekly report template](.github/weekly-audit-report.md). The recap highlights new contributors, priority issues, and discussion outcomes.
+- Missed an update? Check the Announcements category in Discussions for the latest summary and ongoing calls to action.
 
 Need help crafting new rules? Reach out in English or Portuguese—the community is ready to help!
 
