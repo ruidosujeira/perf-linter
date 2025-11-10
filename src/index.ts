@@ -7,6 +7,7 @@ import noReDosRegex from './rules/no-redos-regex';
 import noUnhandledPromises from './rules/no-unhandled-promises';
 import noUnstableInlineProps from './rules/no-unstable-inline-props';
 import noUnstableUseMemoDeps from './rules/no-unstable-usememo-deps';
+import noQuadraticComplexity from './rules/no-quadratic-complexity';
 import preferArraySome from './rules/prefer-array-some';
 import preferForOf from './rules/prefer-for-of';
 import preferObjectHasOwn from './rules/prefer-object-hasown';
@@ -27,7 +28,8 @@ export const rules: PluginRules = {
   'prefer-promise-all-settled': preferPromiseAllSettled,
   'no-expensive-computations-in-render': noExpensiveComputationsInRender,
   'no-expensive-split-replace': noExpensiveSplitReplace,
-  'no-unstable-inline-props': noUnstableInlineProps
+  'no-unstable-inline-props': noUnstableInlineProps,
+  'no-quadratic-complexity': noQuadraticComplexity
 };
 
 const recommendedRules: TSESLint.FlatConfig.Rules = {
@@ -41,7 +43,8 @@ const recommendedRules: TSESLint.FlatConfig.Rules = {
   [`${PLUGIN_NAME}/prefer-promise-all-settled`]: 'warn',
   [`${PLUGIN_NAME}/no-expensive-computations-in-render`]: 'warn',
   [`${PLUGIN_NAME}/no-expensive-split-replace`]: 'warn',
-  [`${PLUGIN_NAME}/no-unstable-inline-props`]: 'warn'
+  [`${PLUGIN_NAME}/no-unstable-inline-props`]: 'warn',
+  [`${PLUGIN_NAME}/no-quadratic-complexity`]: 'warn'
 };
 
 const classicRecommendedConfig: TSESLint.ClassicConfig.Config = {
