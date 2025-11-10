@@ -26,54 +26,6 @@ ruleTester.run('no-unstable-inline-props', rule, {
           const handle = useCallback(() => {}, []);
           return <Child onClick={handle} />;
         };
-
-        typedRuleTester.run('no-unstable-inline-props (type-aware)', rule, {
-          valid: [
-            {
-              filename: path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
-              code: fs.readFileSync(
-                path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
-                'utf8'
-              )
-            },
-            {
-              filename: path.join(fixturesDir, 'no-unstable-inline-props/non-memo-spread.tsx'),
-              code: fs.readFileSync(
-                path.join(fixturesDir, 'no-unstable-inline-props/non-memo-spread.tsx'),
-                'utf8'
-              )
-            }
-          ],
-          invalid: [
-            {
-              filename: path.join(fixturesDir, 'no-unstable-inline-props/memo-inline.tsx'),
-              code: fs.readFileSync(
-                path.join(fixturesDir, 'no-unstable-inline-props/memo-inline.tsx'),
-                'utf8'
-              ),
-              errors: [
-                {
-                  messageId: 'inlineFunctionProp',
-                  line: 3
-                }
-              ]
-            },
-            {
-              filename: path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
-              code: fs.readFileSync(
-                path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
-                'utf8'
-              ),
-              options: [{ relaxForNonMemoized: false }],
-              errors: [
-                {
-                  messageId: 'inlineFunctionProp',
-                  line: 3
-                }
-              ]
-            }
-          ]
-        });
       `
     },
     {
@@ -239,6 +191,54 @@ ruleTester.run('no-unstable-inline-props', rule, {
         {
           messageId: 'spreadCreatesUnstableProps',
           data: { expression: 'props' }
+        }
+      ]
+    }
+  ]
+});
+
+typedRuleTester.run('no-unstable-inline-props (type-aware)', rule, {
+  valid: [
+    {
+      filename: path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
+      code: fs.readFileSync(
+        path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
+        'utf8'
+      )
+    },
+    {
+      filename: path.join(fixturesDir, 'no-unstable-inline-props/non-memo-spread.tsx'),
+      code: fs.readFileSync(
+        path.join(fixturesDir, 'no-unstable-inline-props/non-memo-spread.tsx'),
+        'utf8'
+      )
+    }
+  ],
+  invalid: [
+    {
+      filename: path.join(fixturesDir, 'no-unstable-inline-props/memo-inline.tsx'),
+      code: fs.readFileSync(
+        path.join(fixturesDir, 'no-unstable-inline-props/memo-inline.tsx'),
+        'utf8'
+      ),
+      errors: [
+        {
+          messageId: 'inlineFunctionProp',
+          line: 3
+        }
+      ]
+    },
+    {
+      filename: path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
+      code: fs.readFileSync(
+        path.join(fixturesDir, 'no-unstable-inline-props/non-memo-inline.tsx'),
+        'utf8'
+      ),
+      options: [{ relaxForNonMemoized: false }],
+      errors: [
+        {
+          messageId: 'inlineFunctionProp',
+          line: 3
         }
       ]
     }
