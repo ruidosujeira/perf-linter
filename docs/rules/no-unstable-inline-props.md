@@ -8,6 +8,8 @@ React compares props by reference. Inline functions or object literals recreate 
 
 This rule also looks beyond direct attribute assignments. It tracks values created through destructuring, aliasing, and object spread expressions and, when type information is available, uses the TypeScript checker to follow factories and helpers across module boundaries. With cross-file analysis enabled, the rule inspects the target component to understand whether it is memoized and which prop kinds it expects, allowing it to skip reports for non-memoized targets by default and to align warnings with the component’s declared prop types.
 
+> **Typed insights require configuration:** Ensure ESLint loads `@typescript-eslint/parser` with `parserOptions.project` and `tsconfigRootDir` so Perf Fiscal can reach the TypeScript program and correlate props across files.
+
 ## Options
 
 ```json
