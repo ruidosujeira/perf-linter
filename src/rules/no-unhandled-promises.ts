@@ -183,10 +183,18 @@ function isHandledPromise(node: TSESTree.Node): boolean {
       parent.type === AST_NODE_TYPES.ArrayExpression ||
       parent.type === AST_NODE_TYPES.Property ||
       parent.type === AST_NODE_TYPES.BinaryExpression ||
-      parent.type === AST_NODE_TYPES.TemplateLiteral ||
-      parent.type === AST_NODE_TYPES.ConditionalExpression
+      parent.type === AST_NODE_TYPES.TemplateLiteral
     ) {
       return true;
+    }
+
+    if (
+      parent.type === AST_NODE_TYPES.ConditionalExpression &&
+      (parent.consequent === current || parent.alternate === current)
+    ) {
+      current = parent;
+      parent = parent.parent;
+      continue;
     }
 
     if (parent.type === AST_NODE_TYPES.SequenceExpression) {

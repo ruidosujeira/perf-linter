@@ -56,6 +56,18 @@ ruleTester.run('no-unhandled-promises', rule, {
         new Promise(resolve => resolve());
       `,
       errors: [{ messageId: 'unhandledPromise' }]
+    },
+    {
+      code: `
+        condition ? fetch('/api') : null;
+      `,
+      errors: [{ messageId: 'unhandledPromise' }]
+    },
+    {
+      code: `
+        condition ? doSomething() : fetch('/api');
+      `,
+      errors: [{ messageId: 'unhandledPromise' }]
     }
   ]
 });
