@@ -232,7 +232,13 @@ npm run test
 npm run build
 ```
 
-Ensure the code compiles, tests pass, and linting remains clean before opening a pull request.
+The `lint` script now executes a custom wrapper (`src/cli/run-eslint-with-cache.ts`) that bootstraps ESLint with a persistent cache and fans work out across the available CPU cores. Repeated runs reuse `.eslintcache/` entries, so only files that changed—or whose configuration hash differs—are re-linted. You can forward standard ESLint flags via npm, for example:
+
+```bash
+npm run lint -- --fix --cache-location .cache/eslint
+```
+
+Set `--no-cache` to force a cold run, or `--quiet` to suppress warnings once the cache is warm. Ensure the code compiles, tests pass, and linting remains clean before opening a pull request.
 
 ## Contributing
 
