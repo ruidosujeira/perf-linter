@@ -1,86 +1,21 @@
 import { AST_NODE_TYPES, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { createRule } from '../utils/create-rule';
+import {
+  FunctionNode,
+  getFunctionName,
+  isComponentName,
+  isFunctionNode,
+  isMemoHook,
+  isUseEffectCallee
+} from '../utils/react-ast-utils';
 
 type Options = [];
 type MessageIds = 'expensiveArrayMethod' | 'expensiveJsonCall';
-
-type FunctionNode =
-  | TSESTree.FunctionDeclaration
-  | TSESTree.FunctionExpression
-  | TSESTree.ArrowFunctionExpression;
 
 type ReactContextType = 'component' | 'effect';
 
 const HEAVY_ARRAY_METHODS = new Set(['filter', 'reduce', 'sort']);
 const HEAVY_JSON_METHODS = new Set(['stringify', 'parse']);
-
-function isComponentName(name: string | null): boolean {
-  return !!name && /^[A-Z]/.test(name);
-}
-
-function getFunctionName(node: FunctionNode): string | null {
-  if (node.type === AST_NODE_TYPES.FunctionDeclaration && node.id) {
-    return node.id.name;
-  }
-
-  if ('id' in node && node.id && node.id.type === AST_NODE_TYPES.Identifier) {
-    return node.id.name;
-  }
-
-  let current: TSESTree.Node | undefined = node.parent ?? undefined;
-  while (current) {
-    if (current.type === AST_NODE_TYPES.VariableDeclarator && current.id.type === AST_NODE_TYPES.Identifier) {
-      return current.id.name;
-    }
-
-    if (current.type === AST_NODE_TYPES.Property && current.key.type === AST_NODE_TYPES.Identifier) {
-      return current.key.name;
-    }
-
-    current = current.parent ?? undefined;
-  }
-
-  return null;
-}
-
-function isUseEffectCallee(node: TSESTree.Expression | TSESTree.Super): boolean {
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return node.name === 'useEffect';
-  }
-
-  if (node.type === AST_NODE_TYPES.MemberExpression) {
-    return (
-      !node.computed &&
-      node.property.type === AST_NODE_TYPES.Identifier &&
-      node.property.name === 'useEffect'
-    );
-  }
-
-  if (node.type === AST_NODE_TYPES.ChainExpression) {
-    return isUseEffectCallee(node.expression);
-  }
-
-  return false;
-}
-
-function isMemoHook(node: TSESTree.CallExpression): boolean {
-  if (node.callee.type === AST_NODE_TYPES.Identifier) {
-    return node.callee.name === 'useMemo' || node.callee.name === 'useCallback';
-  }
-
-  if (node.callee.type === AST_NODE_TYPES.MemberExpression && !node.callee.computed) {
-    return (
-      node.callee.property.type === AST_NODE_TYPES.Identifier &&
-      (node.callee.property.name === 'useMemo' || node.callee.property.name === 'useCallback')
-    );
-  }
-
-  if (node.callee.type === AST_NODE_TYPES.ChainExpression) {
-    return isMemoHook({ ...node, callee: node.callee.expression } as TSESTree.CallExpression);
-  }
-
-  return false;
-}
 
 function isHeavyArrayCall(node: TSESTree.CallExpression): string | null {
   if (node.callee.type !== AST_NODE_TYPES.MemberExpression || node.callee.computed) {
@@ -110,14 +45,6 @@ function isHeavyJsonCall(node: TSESTree.CallExpression): string | null {
 
   const method = node.callee.property.name;
   return HEAVY_JSON_METHODS.has(method) ? method : null;
-}
-
-function isFunctionLike(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
 }
 
 export default createRule<Options, MessageIds>({
@@ -168,7 +95,7 @@ export default createRule<Options, MessageIds>({
 
       for (let index = ancestors.length - 1; index >= 0; index -= 1) {
         const ancestor = ancestors[index];
-        if (isFunctionLike(ancestor)) {
+        if (isFunctionNode(ancestor)) {
           if (componentFunctions.has(ancestor)) {
             return { kind: 'component', name: getFunctionName(ancestor) };
           }
@@ -189,7 +116,7 @@ export default createRule<Options, MessageIds>({
       while (current && current.parent) {
         const parent = current.parent as TSESTree.Node;
 
-        if (isFunctionLike(parent) && parent !== current) {
+        if (isFunctionNode(parent) && parent !== current) {
           if (effectCallbacks.has(parent) || componentFunctions.has(parent)) {
             // Once we reach the owning React function we can stop.
             return false;
