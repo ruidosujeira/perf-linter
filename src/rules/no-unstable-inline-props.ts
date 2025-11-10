@@ -2,6 +2,16 @@ import { AST_NODE_TYPES, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import { AnalyzerServices, getCrossFileAnalyzer } from '../analysis/cross-file-analyzer';
 import { createRule } from '../utils/create-rule';
+import {
+  FunctionNode,
+  getFunctionName,
+  isComponentName,
+  isFunctionNode,
+  isInlineFunction,
+  isInlineObject,
+  returnsJSX,
+  unwrapExpression
+} from '../utils/react-ast-utils';
 
 interface RuleOptions {
   ignoreProps?: string[];
@@ -20,11 +30,6 @@ type MessageIds =
   | 'unstableIdentifierObjectProp'
   | 'spreadCreatesUnstableProps';
 
-type FunctionNode =
-  | TSESTree.FunctionDeclaration
-  | TSESTree.FunctionExpression
-  | TSESTree.ArrowFunctionExpression;
-
 type UnstableKind = 'function' | 'object';
 
 const DEFAULT_OPTIONS: RuleOptions = {
@@ -41,94 +46,6 @@ const componentDetectionCache = new WeakMap<FunctionNode, boolean>();
 const componentTsNodeCache = new WeakMap<FunctionNode, ts.Node | null>();
 const expressionKindCache = new WeakMap<TSESTree.Node, UnstableKind | null>();
 const symbolKindCache = new WeakMap<ts.Symbol, UnstableKind | null>();
-
-function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
-  return (
-    node.type === AST_NODE_TYPES.FunctionDeclaration ||
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression
-  );
-}
-
-function getFunctionName(node: FunctionNode): string | null {
-  if ('id' in node && node.id && node.id.type === AST_NODE_TYPES.Identifier) {
-    return node.id.name;
-  }
-
-  const parent = node.parent;
-  if (parent && parent.type === AST_NODE_TYPES.VariableDeclarator && parent.id.type === AST_NODE_TYPES.Identifier) {
-    return parent.id.name;
-  }
-
-  return null;
-}
-
-function isComponentName(name: string | null): boolean {
-  return !!name && /^[A-Z]/.test(name);
-}
-
-function returnsJSX(node: FunctionNode): boolean {
-  if (node.type === AST_NODE_TYPES.ArrowFunctionExpression) {
-    const body = node.body;
-    if (body.type === AST_NODE_TYPES.JSXElement || body.type === AST_NODE_TYPES.JSXFragment) {
-      return true;
-    }
-  }
-
-  const body = node.body;
-  if (body.type !== AST_NODE_TYPES.BlockStatement) {
-    return false;
-  }
-
-  return body.body.some(statement => {
-    if (statement.type !== AST_NODE_TYPES.ReturnStatement || !statement.argument) {
-      return false;
-    }
-    const argument = statement.argument;
-    return argument.type === AST_NODE_TYPES.JSXElement || argument.type === AST_NODE_TYPES.JSXFragment;
-  });
-}
-
-function unwrapExpression(expression: TSESTree.Expression): TSESTree.Expression {
-  let current: TSESTree.Expression = expression;
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-
-    if (current.type === AST_NODE_TYPES.TSAsExpression || current.type === AST_NODE_TYPES.TSTypeAssertion) {
-      current = current.expression;
-      changed = true;
-      continue;
-    }
-
-    if (current.type === AST_NODE_TYPES.TSNonNullExpression || current.type === AST_NODE_TYPES.ChainExpression) {
-      current = current.expression;
-      changed = true;
-      continue;
-    }
-
-    // no-op: parenthesized expressions are represented as their inner node in ESTree output
-  }
-
-  return current;
-}
-
-function isInlineFunction(expression: TSESTree.Expression): expression is TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression {
-  const unwrapped = unwrapExpression(expression);
-  return (
-    unwrapped.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-    unwrapped.type === AST_NODE_TYPES.FunctionExpression
-  );
-}
-
-function isInlineObject(expression: TSESTree.Expression): boolean {
-  const unwrapped = unwrapExpression(expression);
-  return (
-    unwrapped.type === AST_NODE_TYPES.ObjectExpression ||
-    unwrapped.type === AST_NODE_TYPES.ArrayExpression
-  );
-}
 
 function isCustomComponent(opening: TSESTree.JSXOpeningElement): boolean {
   const { name } = opening;
