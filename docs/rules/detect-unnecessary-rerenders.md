@@ -24,3 +24,7 @@ const Component = ({ items, onClick }) => {
 ```
 
 Hoist the callback or wrap it in `useCallback` so that memoized children can leverage referential equality between renders.
+
+## Migration Guidance
+
+Rolling this rule out in existing React surfaces is easier with the [React Application Migration Guide](../migrations/react.md), which outlines staged adoption tactics and configuration examples for memo-heavy components.

@@ -41,3 +41,7 @@ function Component({ data }: { data: string }) {
   return null;
 }
 ```
+
+## Migration Guidance
+
+To phase this rule into React applications without disrupting delivery, reference the [React Application Migration Guide](../migrations/react.md). Monorepo maintainers can pair those steps with the [Mixed Monorepo Migration Guide](../migrations/monorepo.md) to coordinate workspace-specific overrides.

@@ -18,6 +18,7 @@
 - [Key Capabilities](#key-capabilities)
 - [Cross-File Intelligence (New)](#cross-file-intelligence-new)
 - [Getting Started](#getting-started)
+- [Migration Guides](#migration-guides)
 - [Rule Catalog](#rule-catalog)
 - [Configuration Highlights](#configuration-highlights)
 - [Guided Examples](#guided-examples)
@@ -106,6 +107,16 @@ export default [
 ```
 
 > **Note:** The cross-file analyzer needs project-aware parser settings (`parserOptions.project` + `tsconfigRootDir`) so that it can ask the TypeScript checker about symbol relationships across files.
+
+## Migration Guides
+
+Ready to adopt Perf Fiscal in an existing codebase? Choose the guide that matches your architecture:
+
+- [React Application Migration Guide](docs/migrations/react.md) – stage the rollout across React apps and React Native projects while maintaining memo stability.
+- [Node.js Service Migration Guide](docs/migrations/node-services.md) – integrate the plugin into backend services, CLIs, and worker processes.
+- [Mixed Monorepo Migration Guide](docs/migrations/monorepo.md) – coordinate adoption across workspaces that blend frontends, services, and shared packages.
+
+Each guide includes step-by-step rollout plans, configuration snippets, and compatibility notes tailored to the targeted environment.
 
 ### Classic Config (`.eslintrc.*`)
 

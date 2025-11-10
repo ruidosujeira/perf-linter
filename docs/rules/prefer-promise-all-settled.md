@@ -24,3 +24,7 @@ try {
 await Promise.allSettled(tasks);
 Promise.all(tasks).then(onSuccess);
 ```
+
+## Migration Guidance
+
+Backend and serverless teams can follow the [Node.js Service Migration Guide](../migrations/node-services.md) to enable this rule alongside other async safeguards, with notes on configuring multiple tsconfigs inside a workspace-aware ESLint setup.

@@ -21,9 +21,13 @@ function Parent() {
 }
 
 function Child({ options }: { options: Record<string, unknown> }) {
-	return useMemo(() => normalize(options), [options]);
+        return useMemo(() => normalize(options), [options]);
 }
 ```
+
+## Migration Guidance
+
+Teams adopting this rule alongside other React-focused checks should consult the [React Application Migration Guide](../migrations/react.md) for incremental enablement tips and configuration snippets that preserve existing memoization boundaries.
 
 ## Valid
 
