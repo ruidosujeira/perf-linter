@@ -86,15 +86,34 @@ pnpm add -D eslint eslint-plugin-perf-fiscal
 ```js
 import perfFiscal from 'eslint-plugin-perf-fiscal';
 
+const tsParser = await import('@typescript-eslint/parser');
+
 export default [
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parser: tsParser.default,
+      parserOptions: {
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: import.meta.dirname
+      }
+    }
+  },
   perfFiscal.configs.recommended
 ];
 ```
+
+> **Nota:** O analyzer cross-file depende de configurações com conhecimento do projeto (`parserOptions.project` + `tsconfigRootDir`) para consultar o checker do TypeScript e seguir símbolos entre arquivos.
 
 ### Config Clássico (`.eslintrc.*`)
 
 ```js
 module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: ['./tsconfig.json'],
+    tsconfigRootDir: __dirname
+  },
   extends: ['plugin:perf-fiscal/recommended']
 };
 ```
@@ -136,6 +155,7 @@ Cada regra possui documentação detalhada em `docs/rules/<nome-da-regra>.md`.
 ## Destaques de Configuração
 
 - 🧰 **Presets flat vs. clássicos:** Use `perfFiscal.configs.recommended` em configs flat ou `plugin:perf-fiscal/recommended` em configs clássicas.
+- 🛰️ **Habilite a inteligência cross-file:** Configure `@typescript-eslint/parser` com `parserOptions.project` e `tsconfigRootDir` para que o Perf Fiscal possa invocar o checker do TypeScript e seguir símbolos entre arquivos.
 - 🧭 **Controle de severidade:** Ajuste severidades (`off`, `warn`, `error`) conforme sua política interna.
 - ⚙️ **Opções de regra:** Algumas regras expõem configurações específicas. Consulte a documentação de cada regra para detalhes. Exemplo:
 

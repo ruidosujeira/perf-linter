@@ -6,6 +6,8 @@ Warns when a Promise-producing call is made without awaiting it, returning it, o
 
 If a Promise rejects and nothing observes it, the runtime may log it later or ignore it entirely, leaving bugs in production. Bare `fetch()` or `Promise.resolve()` calls also keep tasks alive without a consumer, potentially creating leaks.
 
+When type information is available, the rule follows Promise-returning helpers across module boundaries to warn on indirect async flows. Configure ESLint with `@typescript-eslint/parser` plus `parserOptions.project`/`tsconfigRootDir` so the analyzer can obtain the TypeScript program.
+
 ## Invalid
 
 ```ts
