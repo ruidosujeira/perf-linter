@@ -10,6 +10,10 @@ This rule also looks beyond direct attribute assignments. It tracks values creat
 
 > **Typed insights require configuration:** Ensure ESLint loads `@typescript-eslint/parser` with `parserOptions.project` and `tsconfigRootDir` so Perf Fiscal can reach the TypeScript program and correlate props across files. Follow the [Typed Analyzer Setup](../typed-analyzer-setup.md) guide for a step-by-step checklist and troubleshooting tips.
 
+## Migration Guidance
+
+For rollout strategies that keep large React codebases stable while enabling this rule, follow the [React Application Migration Guide](../migrations/react.md). Monorepos blending multiple apps can layer those recommendations with the [Mixed Monorepo Migration Guide](../migrations/monorepo.md) to coordinate overrides per workspace.
+
 ## Options
 
 ```json

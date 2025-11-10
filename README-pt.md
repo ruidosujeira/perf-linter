@@ -16,6 +16,7 @@
 - [Principais Capacidades](#principais-capacidades)
 - [Inteligência Cross-File (Novo)](#inteligência-cross-file-novo)
 - [Primeiros Passos](#primeiros-passos)
+- [Guias de Migração](#guias-de-migração)
 - [Catálogo de Regras](#catálogo-de-regras)
 - [Destaques de Configuração](#destaques-de-configuração)
 - [Exemplos Guiados](#exemplos-guiados)
@@ -109,6 +110,16 @@ export default [
 ```
 
 > **Nota:** O analyzer cross-file depende de configurações com conhecimento do projeto (`parserOptions.project` + `tsconfigRootDir`) para consultar o checker do TypeScript e seguir símbolos entre arquivos.
+
+## Guias de Migração
+
+Pronto para adotar o Perf Fiscal em um projeto existente? Escolha o guia que combina com sua arquitetura:
+
+- [Guia de Migração para Aplicações React](docs/migrations/react.md) – organize o rollout em apps React e React Native mantendo a estabilidade das memoizações.
+- [Guia de Migração para Serviços Node.js](docs/migrations/node-services.md) – integre o plugin em backends, CLIs e workers que dependem de fluxos assíncronos confiáveis.
+- [Guia de Migração para Monorepos Híbridos](docs/migrations/monorepo.md) – coordene a adoção entre workspaces que misturam frontends, serviços e pacotes compartilhados.
+
+Cada guia oferece um passo a passo de adoção, trechos de configuração e notas de compatibilidade específicas para cada cenário.
 
 ### Config Clássico (`.eslintrc.*`)
 

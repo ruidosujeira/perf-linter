@@ -26,3 +26,7 @@ await fetch('/api/data');
 return Promise.all(tasks);
 fetch('/api/data').then(handle);
 ```
+
+## Migration Guidance
+
+Service teams can use the [Node.js Service Migration Guide](../migrations/node-services.md) to stage adoption in APIs, workers, and CLIs. Monorepo environments should also review the [Mixed Monorepo Migration Guide](../migrations/monorepo.md) for workspace override patterns that keep backend-specific linting scoped appropriately.
