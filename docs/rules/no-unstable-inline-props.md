@@ -19,6 +19,10 @@ This rule also looks beyond direct attribute assignments. It tracks values creat
 		"checkFunctions": true,
 		"checkObjects": true,
 		"checkSpreads": true,
+
+```tsx
+const Panel = ({ onSubmit }: { onSubmit(): void }) => <Form {...{ onSubmit }} />;
+```
 		"relaxForNonMemoized": true
 	}]
 }

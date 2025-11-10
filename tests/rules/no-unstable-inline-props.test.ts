@@ -73,6 +73,11 @@ ruleTester.run('no-unstable-inline-props', rule, {
           return <Child {...stable} />;
         };
       `
+    },
+    {
+      code: `
+        const Panel = ({ onSubmit }: { onSubmit(): void }) => <Form {...{ onSubmit }} />;
+      `
     }
   ],
   invalid: [
@@ -224,7 +229,7 @@ typedRuleTester.run('no-unstable-inline-props (type-aware)', rule, {
       errors: [
         {
           messageId: 'inlineFunctionProp',
-          line: 3
+          line: 4
         }
       ]
     },
@@ -238,7 +243,11 @@ typedRuleTester.run('no-unstable-inline-props (type-aware)', rule, {
       errors: [
         {
           messageId: 'inlineFunctionProp',
-          line: 3
+          line: 4
+        },
+        {
+          messageId: 'inlineObjectProp',
+          line: 4
         }
       ]
     }

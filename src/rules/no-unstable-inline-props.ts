@@ -839,6 +839,120 @@ function evaluateExpressionKindFallback(
   return result;
 }
 
+interface SpreadIssue {
+  node: TSESTree.Expression;
+  kind: UnstableKind;
+  propName: string | null;
+}
+
+function getStaticPropertyName(property: TSESTree.Property): string | null {
+  if (property.computed) {
+    return null;
+  }
+
+  if (property.key.type === AST_NODE_TYPES.Identifier) {
+    return property.key.name;
+  }
+
+  if (
+    property.key.type === AST_NODE_TYPES.Literal &&
+    typeof property.key.value === 'string'
+  ) {
+    return property.key.value;
+  }
+
+  return null;
+}
+
+function collectObjectExpressionSpreadIssues(
+  expression: TSESTree.ObjectExpression,
+  component: FunctionNode,
+  services: AnalyzerServices | null,
+  sourceCode: TSESLint.SourceCode,
+  checkFunctions: boolean,
+  checkObjects: boolean
+): SpreadIssue[] {
+  const issues: SpreadIssue[] = [];
+
+  for (const property of expression.properties) {
+    if (property.type === AST_NODE_TYPES.Property) {
+      if (property.kind !== 'init') {
+        continue;
+      }
+
+      const value = property.value as TSESTree.Expression;
+      const propName = getStaticPropertyName(property);
+      const unwrapped = unwrapExpression(value);
+
+      if (isInlineFunction(unwrapped)) {
+        if (checkFunctions) {
+          issues.push({ node: unwrapped, kind: 'function', propName });
+        }
+        continue;
+      }
+
+      if (isInlineObject(unwrapped)) {
+        if (checkObjects) {
+          issues.push({ node: unwrapped, kind: 'object', propName });
+        }
+        continue;
+      }
+
+      if (!checkFunctions && !checkObjects) {
+        continue;
+      }
+
+      const kind = evaluateExpressionKind(value, component, services, sourceCode, new Set());
+      if (kind === 'function') {
+        if (checkFunctions) {
+          issues.push({ node: value, kind, propName });
+        }
+        continue;
+      }
+
+      if (kind === 'object') {
+        if (checkObjects) {
+          issues.push({ node: value, kind, propName });
+        }
+        continue;
+      }
+
+      continue;
+    }
+
+    if (property.type === AST_NODE_TYPES.SpreadElement) {
+      const argument = unwrapExpression(property.argument as TSESTree.Expression);
+
+      if (argument.type === AST_NODE_TYPES.ObjectExpression) {
+        issues.push(
+          ...collectObjectExpressionSpreadIssues(
+            argument,
+            component,
+            services,
+            sourceCode,
+            checkFunctions,
+            checkObjects
+          )
+        );
+        continue;
+      }
+
+      if (!checkObjects) {
+        continue;
+      }
+
+      const kind = evaluateExpressionKind(argument, component, services, sourceCode, new Set());
+      if (kind === 'object') {
+        issues.push({ node: argument, kind, propName: null });
+      }
+
+      continue;
+    }
+  }
+
+  return issues;
+}
+
 function reportInlineProp(
   context: TSESLint.RuleContext<MessageIds, Options>,
   node: TSESTree.Expression,
@@ -1107,14 +1221,50 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-  const expression = unwrapExpression(node.argument as TSESTree.Expression);
+        const rawArgument = node.argument as TSESTree.Expression;
+        const expression = unwrapExpression(rawArgument);
 
-        if (isInlineObject(expression)) {
+        if (expression.type === AST_NODE_TYPES.ObjectExpression) {
+          let issues = collectObjectExpressionSpreadIssues(
+            expression,
+            component,
+            services,
+            sourceCode,
+            checkFunctions,
+            checkObjects
+          );
+
+          if (issues.length === 0) {
+            return;
+          }
+
+          if (relaxForNonMemoized) {
+            const metadata = getComponentMetadata(parent);
+            if (metadata && metadata.isMemoizedComponent === false && metadata.componentProps) {
+              issues = issues.filter(issue => {
+                if (!issue.propName) {
+                  return true;
+                }
+                const propMeta = metadata.componentProps?.[issue.propName];
+                if (!propMeta) {
+                  return true;
+                }
+                return propMeta.kind !== issue.kind;
+              });
+
+              if (issues.length === 0) {
+                return;
+              }
+            }
+          }
+
+          const reportNode = issues[0]?.node ?? expression;
+
           context.report({
-            node: expression,
+            node: reportNode,
             messageId: 'spreadCreatesUnstableProps',
             data: {
-              expression: sourceCode.getText(expression)
+              expression: sourceCode.getText(rawArgument)
             }
           });
           return;
@@ -1125,13 +1275,12 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-        // If analyzer knows the target component and it's not memoized and has prop metadata,
-        // and this spread only contains props the component expects as objects, skip the report.
         if (relaxForNonMemoized) {
           const metadata = getComponentMetadata(parent);
           if (metadata && metadata.isMemoizedComponent === false && metadata.componentProps) {
-            const propsObj = metadata.componentProps;
-            const hasObjectProp = Object.keys(propsObj).some(key => propsObj[key].kind === 'object');
+            const hasObjectProp = Object.keys(metadata.componentProps).some(
+              key => metadata.componentProps?.[key].kind === 'object'
+            );
             if (hasObjectProp) {
               return;
             }
@@ -1141,7 +1290,7 @@ export default createRule<Options, MessageIds>({
         const expressionText =
           expression.type === AST_NODE_TYPES.Identifier
             ? expression.name
-            : sourceCode.getText(node.argument as TSESTree.Expression);
+            : sourceCode.getText(rawArgument);
 
         context.report({
           node: expression,
