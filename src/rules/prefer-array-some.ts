@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, TSESTree } from '@typescript-eslint/utils';
+import * as ts from 'typescript';
 import { createRule } from '../utils/create-rule';
 
 type Options = [];
@@ -40,6 +41,111 @@ function isFilterCall(node: TSESTree.CallExpression): node is TSESTree.CallExpre
 
   const { property } = node.callee;
   return property.type === AST_NODE_TYPES.Identifier && property.name === 'filter';
+}
+
+function unwrapExpression(node: TSESTree.Expression): TSESTree.Expression {
+  let current: TSESTree.Expression = node;
+
+  while (true) {
+    if (current.type === AST_NODE_TYPES.ChainExpression) {
+      current = current.expression as TSESTree.Expression;
+      continue;
+    }
+
+    if (
+      current.type === AST_NODE_TYPES.TSAsExpression ||
+      current.type === AST_NODE_TYPES.TSTypeAssertion ||
+      current.type === AST_NODE_TYPES.TSNonNullExpression ||
+      current.type === AST_NODE_TYPES.ParenthesizedExpression
+    ) {
+      current = current.expression;
+      continue;
+    }
+
+    break;
+  }
+
+  return current;
+}
+
+function isArrayConstructorCallee(
+  callee: TSESTree.LeftHandSideExpression
+): callee is TSESTree.Identifier {
+  return callee.type === AST_NODE_TYPES.Identifier && callee.name === 'Array';
+}
+
+function isClearlyArrayLike(node: TSESTree.Expression): boolean {
+  const expression = unwrapExpression(node);
+
+  switch (expression.type) {
+    case AST_NODE_TYPES.ArrayExpression:
+      return true;
+    case AST_NODE_TYPES.NewExpression:
+      return isArrayConstructorCallee(expression.callee);
+    case AST_NODE_TYPES.CallExpression: {
+      const { callee } = expression;
+
+      if (isArrayConstructorCallee(callee)) {
+        return true;
+      }
+
+      if (
+        callee.type === AST_NODE_TYPES.MemberExpression &&
+        callee.object.type === AST_NODE_TYPES.Identifier &&
+        callee.object.name === 'Array' &&
+        callee.property.type === AST_NODE_TYPES.Identifier &&
+        (callee.property.name === 'from' || callee.property.name === 'of')
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+function isArrayType(checker: ts.TypeChecker, type: ts.Type): boolean {
+  if (checker.isArrayLikeType(type)) {
+    return true;
+  }
+
+  if (type.isUnion()) {
+    return type.types.every((innerType) => isArrayType(checker, innerType));
+  }
+
+  const symbol = type.getSymbol();
+  if (!symbol) {
+    return false;
+  }
+
+  const name = checker.getFullyQualifiedName(symbol);
+  return name === 'Array' || name === 'ReadonlyArray';
+}
+
+function isArrayLikeExpression(
+  node: TSESTree.Expression,
+  context: TSESLint.RuleContext<MessageIds, Options>
+): boolean {
+  const services = context.parserServices;
+
+  if (services && services.program && services.esTreeNodeToTSNodeMap) {
+    const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+
+    if (tsNode) {
+      const checker = services.program.getTypeChecker();
+      const type = checker.getTypeAtLocation(tsNode);
+
+      if (isArrayType(checker, type)) {
+        return true;
+      }
+
+      return false;
+    }
+  }
+
+  return isClearlyArrayLike(node);
 }
 
 export default createRule<Options, MessageIds>({
@@ -93,8 +199,13 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-        const sourceCode = context.getSourceCode();
         const calleeObject = node.callee.object;
+
+        if (!isArrayLikeExpression(calleeObject, context)) {
+          return;
+        }
+
+        const sourceCode = context.getSourceCode();
         const arrayText = sourceCode.getText(calleeObject);
         const callbackArg = node.arguments[0];
         const thisArg = node.arguments[1];
