@@ -1,6 +1,7 @@
 import { TSESLint } from '@typescript-eslint/utils';
 import pkg from '../package.json';
 import detectUnnecessaryRerenders from './rules/detect-unnecessary-rerenders';
+import bundleThreshold from './rules/bundle-threshold';
 import noExpensiveComputationsInRender from './rules/no-expensive-computations-in-render';
 import noExpensiveSplitReplace from './rules/no-expensive-split-replace';
 import noReDosRegex from './rules/no-redos-regex';
@@ -27,7 +28,8 @@ export const rules: PluginRules = {
   'prefer-promise-all-settled': preferPromiseAllSettled,
   'no-expensive-computations-in-render': noExpensiveComputationsInRender,
   'no-expensive-split-replace': noExpensiveSplitReplace,
-  'no-unstable-inline-props': noUnstableInlineProps
+  'no-unstable-inline-props': noUnstableInlineProps,
+  'bundle-threshold': bundleThreshold
 };
 
 const recommendedRules: TSESLint.FlatConfig.Rules = {
@@ -69,6 +71,8 @@ export const configs = {
   recommended: classicRecommendedConfig,
   'flat/recommended': flatRecommendedConfig
 };
+
+export * from './integrations/bundler-reports';
 
 export default {
   meta,

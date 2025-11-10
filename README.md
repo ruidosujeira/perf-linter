@@ -20,6 +20,7 @@
 - [Getting Started](#getting-started)
 - [Rule Catalog](#rule-catalog)
 - [Configuration Highlights](#configuration-highlights)
+- [Bundle Size Monitoring](#bundle-size-monitoring)
 - [Guided Examples](#guided-examples)
 - [Compatibility](#compatibility)
 - [Development Workflow](#development-workflow)
@@ -169,6 +170,98 @@ Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
     checkSpreads: true
   }]
   ```
+
+## Bundle Size Monitoring
+
+Perf Fiscal now includes a lightweight integration for tracking webpack, Rollup, and Vite bundle reports over time. Use it to spot size regressions before they ship.
+
+### 1. Collect bundle stats
+
+Generate a JSON stats artifact in your build pipeline (examples shown below). Store the output in your repository or CI artifacts.
+
+```bash
+# webpack
+npx webpack --profile --json > build/perf/bundle-report.json
+
+# rollup
+npx rollup -c --bundleConfigAsCjs --watch=false --environment REPORT_JSON=build/perf/bundle-report.json
+
+# vite (requires --ssrManifest or plugin-stats)
+npx vite build --mode production --build-stats
+```
+
+### 2. Persist a baseline
+
+The integration helpers exported from `src/integrations/bundler-reports` can store a baseline bundle snapshot:
+
+```ts
+import { loadBundleReport, saveBundleBaseline } from 'eslint-plugin-perf-fiscal';
+
+const current = loadBundleReport('build/perf/bundle-report.json');
+saveBundleBaseline('.perf/bundle-baseline.json', current);
+```
+
+Baselines can live in source control or an artifact store—any place your CI system can read before running ESLint.
+
+### 3. Enforce thresholds with ESLint
+
+Add the new `perf-fiscal/bundle-threshold` rule to your configuration. Thresholds are defined in **bytes** and can target the total bundle or specific modules. Module patterns accept exact paths, substrings, or JavaScript-style regex literals (e.g. `/pages\\/checkout/`).
+
+```js
+module.exports = {
+  plugins: ['perf-fiscal'],
+  rules: {
+    'perf-fiscal/bundle-threshold': ['warn', {
+      rootDir: __dirname,
+      reportPath: 'build/perf/bundle-report.json',
+      baselinePath: '.perf/bundle-baseline.json',
+      thresholds: {
+        total: {
+          maxIncrease: 25_000, // warn if bundle grows by more than ~25 KB
+          maxSize: 450_000 // fail when the entire bundle exceeds ~450 KB
+        },
+        modules: {
+          'src/pages/checkout.tsx': { maxIncrease: 10_000 },
+          '/src/components/': { maxSize: 120_000 },
+          '/pages\\/admin/': { maxIncrease: 5_000 }
+        },
+        defaultModule: {
+          maxIncrease: 2_000
+        }
+      }
+    }]
+  }
+};
+```
+
+When a file contributes to a threshold breach, the rule emits a warning directly in that file. If no module matches, the rule falls back to reporting total bundle breaches so CI still fails.
+
+### 4. Power custom checks (optional)
+
+Need a bespoke budget gate? Import the integration helpers in your scripts:
+
+```ts
+import {
+  computeBundleDelta,
+  evaluateBundleThresholds,
+  loadBundleBaseline,
+  loadBundleReport
+} from 'eslint-plugin-perf-fiscal';
+
+const baseline = loadBundleBaseline('.perf/bundle-baseline.json');
+const current = loadBundleReport('build/perf/bundle-report.json');
+const delta = computeBundleDelta(current, baseline);
+const breaches = evaluateBundleThresholds(delta, {
+  total: { maxIncrease: 20_000 }
+});
+
+if (breaches.length) {
+  console.error('Bundle threshold breach detected:', breaches);
+  process.exitCode = 1;
+}
+```
+
+This makes it easy to wire bundle budgets into release automation without re-implementing bundler-specific parsing.
 
 ## Guided Examples
 
