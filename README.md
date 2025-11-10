@@ -73,6 +73,11 @@ These examples show how analyzer-backed diagnostics include origin and expected 
 
 ## Getting Started
 
+> 🧭 **Need typed diagnostics?** Review the [Typed Analyzer Setup](docs/typed-analyzer-setup.md) checklist. In short: (1) create a
+> lint-oriented `tsconfig` that includes every file you want to analyze, (2) point `parserOptions.project`/`tsconfigRootDir` to
+> that config, and (3) keep `@typescript-eslint/parser` in sync with ESLint. If ESLint reports "Cannot read file
+> 'tsconfig...json'" or "parserServices to be generated," double-check the `tsconfigRootDir` guidance in the setup guide.
+
 ### Installation
 
 ```bash

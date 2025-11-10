@@ -71,6 +71,11 @@ Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o ti
 
 ## Primeiros Passos
 
+> 🧭 **Quer diagnósticos tipados?** Consulte o guia [Configuração do Analyzer Tipado](docs/typed-analyzer-setup.md). Resumo:
+> (1) crie um `tsconfig` dedicado ao lint que inclua todos os arquivos relevantes, (2) aponte `parserOptions.project`/`tsconfigRootDir`
+> para esse arquivo e (3) mantenha `@typescript-eslint/parser` alinhado à versão do ESLint. Se o ESLint acusar "Cannot read file
+> 'tsconfig...json'" ou "parserServices to be generated", revise as orientações de `tsconfigRootDir` descritas no guia.
+
 ### Instalação
 
 ```bash
