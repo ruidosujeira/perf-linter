@@ -2,6 +2,7 @@ import { TSESLint } from '@typescript-eslint/utils';
 import pkg from '../package.json';
 import detectUnnecessaryRerenders from './rules/detect-unnecessary-rerenders';
 import bundleThreshold from './rules/bundle-threshold';
+import noQuadraticComplexity from './rules/no-quadratic-complexity';
 import noExpensiveComputationsInRender from './rules/no-expensive-computations-in-render';
 import noExpensiveSplitReplace from './rules/no-expensive-split-replace';
 import noReDosRegex from './rules/no-redos-regex';
@@ -29,6 +30,7 @@ export const rules: PluginRules = {
   'no-expensive-computations-in-render': noExpensiveComputationsInRender,
   'no-expensive-split-replace': noExpensiveSplitReplace,
   'no-unstable-inline-props': noUnstableInlineProps,
+  'no-quadratic-complexity': noQuadraticComplexity,
   'bundle-threshold': bundleThreshold
 };
 
