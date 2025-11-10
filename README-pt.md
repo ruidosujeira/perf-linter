@@ -234,11 +234,24 @@ Garanta que o código compile, os testes passem e o lint esteja limpo antes de a
 
 ## Como Contribuir
 
+### Participe das discussões
+- Acesse o [GitHub Discussions](https://github.com/ruidosujeira/perf-linter/discussions) para tirar dúvidas, propor ideias ou responder ao resumo semanal de auditoria. Comece pelo template "Community check-in" para que mantenedores entendam como ajudar.
+- Assine as notificações de anúncios para saber quando um novo relatório for publicado ou quando houver encontros da comunidade.
+
+### Encontre uma primeira tarefa
+- Navegue pelas issues com o rótulo [`good first issue`](https://github.com/ruidosujeira/perf-linter/labels/good%20first%20issue) para atividades rápidas que ajudam a conhecer a base de código.
+- Prefere orientação em português? Filtre pelo rótulo [`boa primeira contribuição`](https://github.com/ruidosujeira/perf-linter/labels/boa%20primeira%20contribui%C3%A7%C3%A3o) — cada tarefa traz passos claros, critérios de aceite e mentores disponíveis.
+
+### Entregue mudanças com confiança
 1. Abra uma issue descrevendo a heurística de performance, sinal proposto e tolerância a falsos positivos.
 2. Implemente a regra em `src/rules/`, adicione cobertura em `tests/rules/` e documente em `docs/rules/<nome-da-regra>.md`.
 3. Exporte a regra em `src/index.ts`, atualize os presets recomendados se necessário e referencie a documentação.
 4. Rode o pipeline (`npm run lint`, `npm run test`, `npm run build`).
 5. Envie o pull request explicando o sinal, a motivação e casos de borda conhecidos.
+
+### Acompanhe os relatórios semanais
+- Toda segunda-feira publicamos uma auditoria comunitária usando o [template do relatório semanal](.github/weekly-audit-report.md). O resumo destaca novos contribuidores, issues prioritárias e resultados das discussões.
+- Perdeu alguma atualização? Confira a categoria de Anúncios nas Discussões para acessar o histórico e chamadas em andamento.
 
 Precisa de ajuda para criar novas regras? Fale em inglês ou português — a comunidade está pronta para apoiar!
 
