@@ -258,6 +258,12 @@ const Panel = ({ onSubmit }) => {
 };
 ```
 
+### Cross-file analyzer in action
+
+![ESLint recording](docs/examples/cross-file-warning/demo.gif)
+
+The clip above (capture it following [docs/examples/cross-file-warning/README.md](docs/examples/cross-file-warning/README.md)) shows a single ESLint run catching two unstable props and an unhandled async flow. The demo highlights how the analyzer correlates memo wrappers and async helpers across files.
+
 ## Compatibility
 
 - **Node.js:** 18+
@@ -283,6 +289,8 @@ Ensure the code compiles, tests pass, and linting remains clean before opening a
 See [`docs/benchmarking.md`](docs/benchmarking.md) for details about the benchmark harness and reference projects it exercises.
 
 ## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the quickstart workflow and expectations before opening a pull request.
 
 ### Join the conversation
 - Head to [GitHub Discussions](https://github.com/ruidosujeira/perf-linter/discussions) to ask questions, propose ideas, or respond to the weekly audit summary. Start with the "Community check-in" template so maintainers know how to support you.
