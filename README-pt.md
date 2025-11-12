@@ -15,6 +15,7 @@
 
 - [Principais Capacidades](#principais-capacidades)
 - [Inteligência Cross-File (Novo)](#inteligência-cross-file-novo)
+- [Destaques da Versão — 0.4.0](#destaques-da-versão--040)
 - [Primeiros Passos](#primeiros-passos)
 - [Guias de Migração](#guias-de-migração)
 - [Catálogo de Regras](#catálogo-de-regras)
@@ -69,6 +70,22 @@ src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise retu
 ```
 
 Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o tipo esperado de prop, acelerando correções com confiança.
+
+## Destaques da Versão — 0.4.0
+
+- 🚀 **Indexação sob demanda:** Os índices de módulos e usos agora são construídos preguiçosamente, reduzindo o tempo de inicialização em lintes de projetos grandes.
+- 🧭 **Coleta de usos com consciência de importadores:** O rastreamento de JSX e chamadas segue o grafo real de imports, analisando apenas os arquivos relevantes.
+- 📊 **Traces com estatísticas:** Ao habilitar `debugExplain` (por exemplo em `perf-fiscal/no-unhandled-promises`), o trace passa a incluir `analyzerStats` com a contagem de arquivos indexados por subsistema.
+
+Veja as notas completas em [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md). Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
+
+```json
+{
+  "perf-fiscal/no-unhandled-promises": ["warn", { "debugExplain": false }]
+}
+```
+
+Encontrou regressão ou alerta barulhento? Abra o novo [template de False Positive](https://github.com/ruidosujeira/perf-linter/issues/new?template=false-positive.md) para agilizar o triagem.
 
 ## Primeiros Passos
 
@@ -182,6 +199,17 @@ Cada regra possui documentação detalhada em `docs/rules/<nome-da-regra>.md`.
     checkObjects: true,
     checkSpreads: true
   }]
+  ```
+- 🧮 **Presets de rigor de performance:** As regras mais ruidosas agora compartilham opções como `strictness` (`relaxed` \| `balanced` \| `strict`), `includeTestFiles`, `includeStoryFiles` e `debugExplain`. Use-as para controlar o nível de ruído, ignorar pastas de fixtures ou exibir pistas de confiança:
+
+  ```js
+  'perf-fiscal/no-expensive-computations-in-render': ['warn', {
+    strictness: 'strict',
+    includeTestFiles: false,
+    debugExplain: true
+  }],
+  'perf-fiscal/no-expensive-split-replace': ['warn', { strictness: 'relaxed' }],
+  'perf-fiscal/no-unhandled-promises': ['error', { strictness: 'balanced' }]
   ```
 
 ## Exemplos Guiados

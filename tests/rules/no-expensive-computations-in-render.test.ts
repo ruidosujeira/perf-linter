@@ -15,6 +15,15 @@ ruleTester.run('no-expensive-computations-in-render', rule, {
     },
     {
       code: `
+        function TinyArrayComponent() {
+          const filtered = [1,2,3].filter(n => n > 1);
+          const serialized = JSON.stringify({ a: 1, b: 2 });
+          return <div>{filtered.length}{serialized.length}</div>;
+        }
+      `
+    },
+    {
+      code: `
         function Component({ data }: { data: string }) {
           const parsed = useMemo(() => JSON.parse(data), [data]);
           useEffect(() => {
@@ -23,6 +32,25 @@ ruleTester.run('no-expensive-computations-in-render', rule, {
           return null;
         }
       `
+    },
+    {
+      code: `
+        function StrictTinyArray() {
+          const filtered = [1,2,3,4,5,6,7].filter(Boolean);
+          return <div>{filtered.length}</div>;
+        }
+      `,
+      options: [{ strictness: 'strict' }]
+    },
+    {
+      filename: 'Component.test.tsx',
+      code: `
+        function TestComponent({ items }: { items: string[] }) {
+          const tokens = items.filter(item => item.includes('a'));
+          return <List values={tokens} />;
+        }
+      `,
+      options: [{ includeTestFiles: false }]
     },
     {
       code: `
@@ -63,6 +91,16 @@ ruleTester.run('no-expensive-computations-in-render', rule, {
         }
       `,
       errors: [{ messageId: 'expensiveJsonCall' }]
+    },
+    {
+      code: `
+        function RelaxedComponent() {
+          const filtered = [1,2,3,4].filter(n => n > 2);
+          return <div>{filtered.length}</div>;
+        }
+      `,
+      options: [{ strictness: 'relaxed' }],
+      errors: [{ messageId: 'expensiveArrayMethod' }]
     }
   ]
 });

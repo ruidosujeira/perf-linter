@@ -27,6 +27,13 @@ return Promise.all(tasks);
 fetch('/api/data').then(handle);
 ```
 
+## Options
+
+- `strictness` (`"relaxed" | "balanced" | "strict"`, default `"balanced"`): controls how aggressively the rule treats ambiguous flows. Strict mode flags `void fetch()` discards and lowers the confidence threshold; relaxed mode focuses on obvious unawaited calls.
+- `includeTestFiles` (boolean, default `true`): when `false`, suppresses diagnostics in test-like paths/extensions.
+- `includeStoryFiles` (boolean, default `true`): when `false`, skips Storybook-style files.
+- `debugExplain` (boolean, default `false`): appends a confidence hint to the diagnostic message.
+
 ## Migration Guidance
 
 Service teams can use the [Node.js Service Migration Guide](../migrations/node-services.md) to stage adoption in APIs, workers, and CLIs. Monorepo environments should also review the [Mixed Monorepo Migration Guide](../migrations/monorepo.md) for workspace override patterns that keep backend-specific linting scoped appropriately.

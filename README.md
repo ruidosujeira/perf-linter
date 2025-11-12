@@ -17,6 +17,7 @@
 
 - [Key Capabilities](#key-capabilities)
 - [Cross-File Intelligence (New)](#cross-file-intelligence-new)
+- [Release Highlights — 0.4.0](#release-highlights--040)
 - [Getting Started](#getting-started)
 - [Migration Guides](#migration-guides)
 - [Rule Catalog](#rule-catalog)
@@ -71,6 +72,22 @@ src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise retu
 ```
 
 These examples show how analyzer-backed diagnostics include origin and expected prop-kind, making fixes faster and more confident.
+
+## Release Highlights — 0.4.0
+
+- 🚀 **On-demand indexing:** Module and usage indices now build lazily, shrinking cold-start time for project-sized lint runs.
+- 🧭 **Importer-aware usage scans:** JSX and call-site tracking follows real import graphs so only relevant files are analyzed.
+- 📊 **Explain traces with stats:** When `debugExplain` is enabled (e.g. on `perf-fiscal/no-unhandled-promises`), the trace now includes an `analyzerStats` step showing how many files were indexed by each subsystem.
+
+See the detailed notes in [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md). To opt out of the new trace data, keep `debugExplain` set to `false` (the default) or disable it per-rule:
+
+```json
+{
+  "perf-fiscal/no-unhandled-promises": ["warn", { "debugExplain": false }]
+}
+```
+
+Found a regression or noisy warning? Use the dedicated [False Positive issue template](https://github.com/ruidosujeira/perf-linter/issues/new?template=false-positive.md) so we can triage quickly.
 
 ## Getting Started
 
@@ -184,6 +201,17 @@ Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
     checkObjects: true,
     checkSpreads: true
   }]
+  ```
+- 🧮 **Performance strictness presets:** The high-signal rules now accept shared options—`strictness` (`relaxed` \| `balanced` \| `strict`), `includeTestFiles`, `includeStoryFiles`, and `debugExplain`. Use them to dial noise, skip fixture-heavy folders, or surface confidence hints:
+
+  ```js
+  'perf-fiscal/no-expensive-computations-in-render': ['warn', {
+    strictness: 'strict',
+    includeTestFiles: false,
+    debugExplain: true
+  }],
+  'perf-fiscal/no-expensive-split-replace': ['warn', { strictness: 'relaxed' }],
+  'perf-fiscal/no-unhandled-promises': ['error', { strictness: 'balanced' }]
   ```
 
 ## Guided Examples

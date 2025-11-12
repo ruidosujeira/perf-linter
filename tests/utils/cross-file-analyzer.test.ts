@@ -1,7 +1,7 @@
 import path from 'path';
 import ts from 'typescript';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { CrossFileAnalyzer, PropUsageDetail, UsageRecord } from '../../src/analysis/cross-file-analyzer';
+import { CrossFileAnalyzer, UsageRecord } from '../../src/analysis/cross-file-analyzer';
 
 const fixturesDir = path.resolve(__dirname, '../fixtures');
 const tsconfigPath = path.join(fixturesDir, 'tsconfig.json');
@@ -105,11 +105,7 @@ describe('CrossFileAnalyzer', () => {
     // Trigger usage analysis so prop usages are populated.
     fancyButton?.getUsages();
 
-    const internal = analyzer as unknown as { componentPropUsages: Map<ts.Symbol, PropUsageDetail[]> };
-    const symbol = fancyButton?.getInternalSymbol();
-    expect(symbol).toBeTruthy();
-
-    const usages = symbol ? internal.componentPropUsages.get(symbol) ?? [] : [];
+    const usages = fancyButton?.getPropUsages() ?? [];
     const spreadUsages = usages.filter(usage => usage.fileName.endsWith('cross-file/spread-consumer.tsx'));
     expect(spreadUsages.length).toBeGreaterThan(0);
 
@@ -134,5 +130,41 @@ describe('CrossFileAnalyzer', () => {
     );
     expect(nestedIdentifierSpread?.isInline).toBe(false);
     expect(nestedIdentifierSpread?.isIdentifier).toBe(true);
+  });
+
+  it('reports lazy indexing stats for module and usage indices', () => {
+    const program = createProgramFromTsconfig(tsconfigPath);
+    const freshAnalyzer = new CrossFileAnalyzer(program);
+    const componentsPath = path.join(fixturesDir, 'cross-file/components.tsx');
+
+    const initialStats = freshAnalyzer.getStats();
+    expect(initialStats.moduleIndex.filesIndexed).toBe(0);
+    expect(initialStats.usageIndex.filesIndexed).toBe(0);
+    expect(initialStats.moduleIndex.isFullyBuilt).toBe(false);
+    expect(initialStats.usageIndex.isFullyBuilt).toBe(false);
+
+    const summary = freshAnalyzer.getFileSummary(componentsPath);
+    expect(summary).not.toBeNull();
+
+    const afterSummaryStats = freshAnalyzer.getStats();
+    expect(afterSummaryStats.moduleIndex.filesIndexed).toBe(1);
+    expect(afterSummaryStats.usageIndex.filesIndexed).toBe(0);
+    expect(afterSummaryStats.moduleIndex.isFullyBuilt).toBe(false);
+
+    const fancyButton = summary?.exports.find(record => record.exportName === 'FancyButton');
+    expect(fancyButton).toBeTruthy();
+
+    fancyButton?.symbol.getUsages();
+
+    const afterUsageStats = freshAnalyzer.getStats();
+    expect(afterUsageStats.usageIndex.filesIndexed).toBe(3);
+    expect(afterUsageStats.usageIndex.isFullyBuilt).toBe(false);
+  expect(afterUsageStats.moduleIndex.filesIndexed).toBeGreaterThan(afterSummaryStats.moduleIndex.filesIndexed);
+    expect(afterUsageStats.moduleIndex.isFullyBuilt).toBe(true);
+
+    // Prop usage call should not increase counts beyond already indexed files.
+    fancyButton?.symbol.getPropUsages();
+    const afterPropStats = freshAnalyzer.getStats();
+    expect(afterPropStats.usageIndex.filesIndexed).toBe(afterUsageStats.usageIndex.filesIndexed);
   });
 });

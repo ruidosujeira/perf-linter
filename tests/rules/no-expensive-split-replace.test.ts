@@ -32,6 +32,34 @@ ruleTester.run('no-expensive-split-replace', rule, {
           return tokens.join(',');
         });
       `
+    },
+    {
+      code: `
+        for (let i = 0; i < 10; i++) {
+          // Small constant string is cheap
+          const parts = 'a,b,c'.split(',');
+          consume(parts);
+        }
+      `
+    },
+    {
+      code: `
+        for (let i = 0; i < 5; i++) {
+          const parts = 'a,b,c,d,e,f,g,h,i'.split(',');
+          consume(parts);
+        }
+      `,
+      options: [{ strictness: 'strict' }]
+    },
+    {
+      filename: 'processor.test.ts',
+      code: `
+        for (const item of items) {
+          const tokens = item.value.split('-');
+          consume(tokens);
+        }
+      `,
+      options: [{ includeTestFiles: false }]
     }
   ],
   invalid: [
@@ -74,6 +102,21 @@ ruleTester.run('no-expensive-split-replace', rule, {
         {
           messageId: 'expensiveSplitReplaceIteration',
           data: { iteration: 'forEach', method: 'replaceAll' }
+        }
+      ]
+    },
+    {
+      code: `
+        for (let i = 0; i < 3; i++) {
+          const normalized = 'abcdefghijklmn'.split('');
+          consume(normalized);
+        }
+      `,
+      options: [{ strictness: 'relaxed' }],
+      errors: [
+        {
+          messageId: 'expensiveSplitReplaceLoop',
+          data: { method: 'split' }
         }
       ]
     }

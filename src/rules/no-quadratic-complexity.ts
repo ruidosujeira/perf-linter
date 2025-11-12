@@ -16,6 +16,8 @@ type FunctionNode =
   | TSESTree.FunctionExpression
   | TSESTree.ArrowFunctionExpression;
 
+type ChainableCallee = TSESTree.LeftHandSideExpression | TSESTree.ChainExpression;
+
 const ITERATOR_METHODS = new Set([
   'forEach',
   'map',
@@ -225,19 +227,19 @@ function isSmallLoop(node: LoopNode): boolean {
 }
 
 function unwrapCallee(
-  callee: TSESTree.LeftHandSideExpression
+  callee: ChainableCallee
 ): TSESTree.Expression | TSESTree.PrivateIdentifier {
   if (callee.type === AST_NODE_TYPES.ChainExpression) {
-    return callee.expression;
+    return callee.expression as TSESTree.Expression;
   }
 
-  return callee;
+  return callee as TSESTree.Expression | TSESTree.PrivateIdentifier;
 }
 
 function getIteratorTarget(node: TSESTree.CallExpression):
   | { method: string; target: TSESTree.Expression }
   | null {
-  const callee = unwrapCallee(node.callee);
+  const callee = unwrapCallee(node.callee as ChainableCallee);
 
   if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) {
     return null;
@@ -376,7 +378,7 @@ export default createRule<Options, MessageIds>({
         return;
       }
 
-      const callee = unwrapCallee(node.callee);
+  const callee = unwrapCallee(node.callee as ChainableCallee);
       if (callee.type !== AST_NODE_TYPES.Identifier) {
         return;
       }

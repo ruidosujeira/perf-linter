@@ -27,6 +27,21 @@ ruleTester.run('no-unhandled-promises', rule, {
         const promise = asyncFn();
         promise.then(handle);
       `
+    },
+    {
+      code: `
+        // Explicitly discard promise with void; should be valid now
+        void fetch('/api/data');
+      `
+    },
+    {
+      filename: 'loader.test.ts',
+      code: `
+        async function load() {
+          fetch('/api/data');
+        }
+      `,
+      options: [{ includeTestFiles: false }]
     }
   ],
   invalid: [
@@ -55,6 +70,14 @@ ruleTester.run('no-unhandled-promises', rule, {
       code: `
         new Promise(resolve => resolve());
       `,
+      errors: [{ messageId: 'unhandledPromise' }]
+    },
+    {
+      code: `
+        // Strict mode should flag void discard
+        void fetch('/api/data');
+      `,
+      options: [{ strictness: 'strict' }],
       errors: [{ messageId: 'unhandledPromise' }]
     }
   ]

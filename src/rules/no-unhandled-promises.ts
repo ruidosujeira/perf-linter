@@ -2,6 +2,9 @@ import { AST_NODE_TYPES, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
 import { AnalyzerServices, getCrossFileAnalyzer } from '../analysis/cross-file-analyzer';
 import { createRule } from '../utils/create-rule';
+import { BaseRuleOptions, createExplainCollector, shouldSkipFile } from '../utils/rule-options';
+
+type Options = [BaseRuleOptions?];
 
 const KNOWN_PROMISE_IDENTIFIERS = new Set(['fetch', 'axios', 'Promise']);
 const KNOWN_PROMISE_METHODS = new Set(['resolve', 'reject', 'all', 'race', 'any', 'allSettled']);
@@ -50,7 +53,7 @@ function isAsyncFunctionNode(node: TSESTree.Node | null | undefined): boolean {
 }
 
 function isAsyncIdentifier(
-  context: TSESLint.RuleContext<'unhandledPromise', []>,
+  context: TSESLint.RuleContext<'unhandledPromise', Options>,
   identifier: TSESTree.Identifier
 ): boolean {
   const sourceCode = context.getSourceCode();
@@ -91,7 +94,7 @@ function isAsyncIdentifier(
 }
 
 function isPromiseLikeCall(
-  context: TSESLint.RuleContext<'unhandledPromise', []>,
+  context: TSESLint.RuleContext<'unhandledPromise', Options>,
   node: TSESTree.CallExpression,
   analyzerServices: AnalyzerServices | null
 ): boolean {
@@ -144,7 +147,7 @@ function isPromiseLikeNewExpression(
   return node.callee.type === AST_NODE_TYPES.Identifier && node.callee.name === 'Promise';
 }
 
-function isHandledPromise(node: TSESTree.Node): boolean {
+function isHandledPromise(node: TSESTree.Node, treatVoidAsHandled: boolean): boolean {
   let current: TSESTree.Node = node;
   let parent = node.parent;
 
@@ -157,6 +160,16 @@ function isHandledPromise(node: TSESTree.Node): boolean {
 
     if (parent.type === AST_NODE_TYPES.AwaitExpression) {
       return true;
+    }
+
+    if (parent.type === AST_NODE_TYPES.UnaryExpression && parent.operator === 'void') {
+      if (treatVoidAsHandled) {
+        // Explicitly discarded promise using void operator; treat as intentionally handled unless running in strict mode.
+        return true;
+      }
+      current = parent;
+      parent = parent.parent;
+      continue;
     }
 
     if (parent.type === AST_NODE_TYPES.ReturnStatement) {
@@ -205,7 +218,7 @@ function isHandledPromise(node: TSESTree.Node): boolean {
   return true;
 }
 
-export default createRule<[], 'unhandledPromise'>({
+export default createRule<Options, 'unhandledPromise'>({
   name: 'no-unhandled-promises',
   meta: {
     type: 'problem',
@@ -213,39 +226,112 @@ export default createRule<[], 'unhandledPromise'>({
       description: 'Disallow creating Promises without awaiting them or chaining handlers, preventing hidden rejections and resource leaks.',
       recommended: 'recommended'
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          strictness: {
+            type: 'string',
+            enum: ['relaxed', 'balanced', 'strict']
+          },
+          includeTestFiles: {
+            type: 'boolean'
+          },
+          includeStoryFiles: {
+            type: 'boolean'
+          },
+          debugExplain: {
+            type: 'boolean'
+          }
+        },
+        additionalProperties: false
+      }
+    ],
     messages: {
       unhandledPromise:
         'Unhandled Promise: await this call or return/chain it to avoid swallowing rejections.'
     }
   },
-  defaultOptions: [],
-  create(context: TSESLint.RuleContext<'unhandledPromise', []>) {
+  defaultOptions: [{}],
+  create(context: TSESLint.RuleContext<'unhandledPromise', Options>) {
+    const options = context.options[0] ?? {};
+    if (shouldSkipFile(context, options)) {
+      return {};
+    }
+
+    const treatVoidAsHandled = (options.strictness ?? 'balanced') !== 'strict';
     const analyzerServices = getCrossFileAnalyzer(context);
+    const debug = options.debugExplain === true;
+
+    const createDebugCollector = () =>
+      createExplainCollector(debug, {
+        onSnapshot: () => {
+          if (!analyzerServices) {
+            return undefined;
+          }
+
+          return {
+            step: 'analyzerStats',
+            data: analyzerServices.analyzer.getStats()
+          };
+        }
+      });
 
     return {
       CallExpression(node: TSESTree.CallExpression) {
+        const explain = createDebugCollector();
+        explain.push('inspectCallExpression');
+
         if (!isPromiseLikeCall(context, node, analyzerServices)) {
+          explain.push('skipNonPromiseCall');
           return;
         }
 
-        if (!isHandledPromise(node)) {
-          context.report({
+        explain.push('promiseLikeCall');
+
+        if (!isHandledPromise(node, treatVoidAsHandled)) {
+          explain.push('reportUnhandled');
+          const trace = explain.snapshot() ?? [];
+          const baseReport = {
             node,
-            messageId: 'unhandledPromise'
-          });
+            messageId: 'unhandledPromise' as const
+          };
+          if (debug) {
+            context.report({
+              ...baseReport,
+              data: { trace }
+            });
+          } else {
+            context.report(baseReport);
+          }
         }
       },
       NewExpression(node: TSESTree.NewExpression) {
+        const explain = createDebugCollector();
+        explain.push('inspectNewExpression');
+
         if (!isPromiseLikeNewExpression(node, analyzerServices)) {
+          explain.push('skipNonPromiseNew');
           return;
         }
 
-        if (!isHandledPromise(node)) {
-          context.report({
+        explain.push('promiseLikeNew');
+
+        if (!isHandledPromise(node, treatVoidAsHandled)) {
+          explain.push('reportUnhandled');
+          const trace = explain.snapshot() ?? [];
+          const baseReport = {
             node,
-            messageId: 'unhandledPromise'
-          });
+            messageId: 'unhandledPromise' as const
+          };
+          if (debug) {
+            context.report({
+              ...baseReport,
+              data: { trace }
+            });
+          } else {
+            context.report(baseReport);
+          }
         }
       }
     };

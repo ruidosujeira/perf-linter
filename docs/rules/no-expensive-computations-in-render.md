@@ -42,6 +42,13 @@ function Component({ data }: { data: string }) {
 }
 ```
 
+## Options
+
+- `strictness` (`"relaxed" | "balanced" | "strict"`, default `"balanced"`): adjusts literal-size heuristics and the confidence threshold before reporting. Relaxed mode only flags the heaviest signals; strict mode widens coverage.
+- `includeTestFiles` (boolean, default `true`): when `false`, suppresses diagnostics for test-like paths and extensions.
+- `includeStoryFiles` (boolean, default `true`): when `false`, skips files that look like Storybook stories.
+- `debugExplain` (boolean, default `false`): appends a confidence hint to the diagnostic message to help tune severity.
+
 ## Migration Guidance
 
 To phase this rule into React applications without disrupting delivery, reference the [React Application Migration Guide](../migrations/react.md). Monorepo maintainers can pair those steps with the [Mixed Monorepo Migration Guide](../migrations/monorepo.md) to coordinate workspace-specific overrides.

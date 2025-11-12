@@ -1,104 +1,35 @@
-import path from 'path';
 import { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import * as ts from 'typescript';
+import {
+  ComponentPropMetadata,
+  ExportBinding,
+  ExportRecord as DomainExportRecord,
+  FileSummary as DomainFileSummary,
+  REACT_RETURN_RE,
+  PropUsageDetail,
+  SymbolKind,
+  SymbolMetadata,
+  UsageRecord
+} from './domain';
+import { ModuleIndex, ModuleIndexStats } from './module-index';
+import { firstDefined, normalizeFileName } from './shared';
+import { UsageIndex, UsageIndexStats } from './usage-index';
 
-type SymbolKind =
-  | 'function'
-  | 'class'
-  | 'variable'
-  | 'enum'
-  | 'interface'
-  | 'type'
-  | 'namespace'
-  | 'unknown';
+type AnalyzerExportRecord = DomainExportRecord<CrossFileSymbolReference>;
+type AnalyzerFileSummary = DomainFileSummary<CrossFileSymbolReference>;
 
-type UsageKind = 'call' | 'new' | 'jsx';
+interface ExportBindingInternal extends ExportBinding {}
 
-interface Range {
-  start: number;
-  end: number;
+export interface CrossFileAnalyzerOptions {
+  debug?(message: string, details?: unknown): void;
 }
 
-export interface UsageRecord {
-  kind: UsageKind;
-  fileName: string;
-  range: Range;
-  // Optional prop-level metadata when the usage is a JSX element
-  propName?: string | null;
-  argumentText?: string | null;
-  isInline?: boolean;
-  isIdentifier?: boolean;
-}
-
-export interface ImportRecord {
-  moduleName: string;
-  imported: string | null;
-  local: string;
-  isTypeOnly: boolean;
-  isNamespace: boolean;
-  resolvedFileName: string | null;
-}
-
-export interface ExportRecord {
-  exportName: string;
-  isDefault: boolean;
-  isTypeOnly: boolean;
-  symbol: CrossFileSymbolReference;
-}
-
-export interface FileSummary {
-  fileName: string;
-  imports: ImportRecord[];
-  exports: ExportRecord[];
-}
-
-export interface PropUsageDetail {
-  fileName: string;
-  range: Range;
-  propName: string;
-  argumentText: string | null;
-  isInline: boolean;
-  isIdentifier: boolean;
-}
-
-export interface ComponentPropMetadata {
-  kind: 'function' | 'object' | 'other';
-  isOptional: boolean;
-}
-
-interface ExportBindingInternal {
-  fileName: string;
-  exportName: string;
-  isDefault: boolean;
-  isTypeOnly: boolean;
-}
-
-interface SymbolMetadata {
-  declaredName: string;
-  kind: SymbolKind;
-  declarationFile: string | null;
-  isComponent: boolean;
-  isHook: boolean;
-  isAsync: boolean;
-  returnsPromise: boolean;
-  isMemoizedComponent: boolean;
-  componentProps: Record<string, ComponentPropMetadata> | null;
-}
+export type ExportRecord = AnalyzerExportRecord;
+export type FileSummary = AnalyzerFileSummary;
+export type { UsageRecord, PropUsageDetail, ComponentPropMetadata, ImportRecord, SymbolKind } from './domain';
+export { SPREAD_SENTINEL, REACT_RETURN_RE } from './domain';
 
 const analyzerCache = new WeakMap<ts.Program, CrossFileAnalyzer>();
-
-function normalizeFileName(fileName: string): string {
-  return path.normalize(fileName).replace(/\\/g, '/');
-}
-
-function firstDefined<T>(values: readonly (T | undefined)[]): T | undefined {
-  for (const value of values) {
-    if (value !== undefined) {
-      return value;
-    }
-  }
-  return undefined;
-}
 
 function isFunctionLikeDeclaration(node: ts.Declaration): node is ts.FunctionLikeDeclaration {
   return (
@@ -161,6 +92,10 @@ export class CrossFileSymbolReference {
     return this.analyzer.getUsagesForSymbol(this.symbol);
   }
 
+  getPropUsages(): ReadonlyArray<PropUsageDetail> {
+    return this.analyzer.getComponentPropUsages(this.symbol);
+  }
+
   /**
    * Expose underlying TypeScript symbol for advanced integrations when needed.
    * Consumers should avoid holding onto this beyond the current lint pass.
@@ -175,16 +110,28 @@ export class CrossFileAnalyzer {
   private readonly promiseTypeCache = new WeakMap<ts.Type, boolean>();
   private readonly symbolMetadataCache = new Map<ts.Symbol, SymbolMetadata>();
   private readonly symbolHandles = new Map<ts.Symbol, CrossFileSymbolReference>();
-  private readonly symbolExports = new Map<ts.Symbol, ExportBindingInternal[]>();
-  private readonly fileSummaries = new Map<string, FileSummary>();
-  private readonly symbolUsages = new Map<ts.Symbol, UsageRecord[]>();
-  // index mapping component symbol -> array of prop usage details seen across files
-  private readonly componentPropUsages = new Map<ts.Symbol, PropUsageDetail[]>();
-  private moduleIndexBuilt = false;
-  private usageIndexBuilt = false;
+  private readonly moduleIndex: ModuleIndex;
+  private readonly usageIndex: UsageIndex;
+  private readonly callSignatureCache = new Map<ts.Symbol, readonly ts.Signature[]>();
+  private readonly debug?: (message: string, details?: unknown) => void;
 
-  constructor(private readonly program: ts.Program) {
+  constructor(private readonly program: ts.Program, options: CrossFileAnalyzerOptions = {}) {
     this.checker = program.getTypeChecker();
+    this.debug = options.debug;
+    this.moduleIndex = new ModuleIndex({
+      program: this.program,
+      checker: this.checker,
+      resolveAliasedSymbol: this.resolveAliasedSymbol.bind(this),
+      isTypeOnlyExport: this.isTypeOnlyExport.bind(this),
+      debug: this.debug
+    });
+    this.usageIndex = new UsageIndex({
+      program: this.program,
+      checker: this.checker,
+      resolveAliasedSymbol: this.resolveAliasedSymbol.bind(this),
+      getImporterFilesForSymbol: this.getImporterFilesForSymbol.bind(this),
+      debug: this.debug
+    });
   }
 
   getTypeChecker(): ts.TypeChecker {
@@ -192,39 +139,37 @@ export class CrossFileAnalyzer {
   }
 
   getFileSummary(fileName: string): FileSummary | null {
-    this.ensureModuleIndex();
-    const normalized = normalizeFileName(fileName);
-    const summary = this.fileSummaries.get(normalized);
-    return summary ? { ...summary, imports: [...summary.imports], exports: [...summary.exports] } : null;
-  }
-
-  findExportedSymbol(fileName: string, exportName: string): CrossFileSymbolReference | null {
-    this.ensureModuleIndex();
-    const normalized = normalizeFileName(fileName);
-    const summary = this.fileSummaries.get(normalized);
+    const summary = this.moduleIndex.getFileSummary(fileName);
     if (!summary) {
       return null;
     }
 
-    for (const record of summary.exports) {
-      if (record.exportName === exportName) {
-        return record.symbol;
-      }
+    return {
+      fileName: summary.fileName,
+      imports: summary.imports.map(importRecord => ({ ...importRecord })),
+      exports: summary.exports.map(exportRecord => ({
+        fileName: exportRecord.fileName ?? summary.fileName,
+        exportName: exportRecord.exportName,
+        isDefault: exportRecord.isDefault,
+        isTypeOnly: exportRecord.isTypeOnly,
+        symbol: this.getSymbolHandle(exportRecord.symbol)
+      }))
+    };
+  }
+
+  findExportedSymbol(fileName: string, exportName: string): CrossFileSymbolReference | null {
+    const summary = this.moduleIndex.getFileSummary(fileName);
+    if (!summary) {
+      return null;
     }
 
-    return null;
+    const match = summary.exports.find(record => record.exportName === exportName);
+    return match ? this.getSymbolHandle(match.symbol) : null;
   }
 
   findSymbolsByExportName(exportName: string): CrossFileSymbolReference[] {
-    this.ensureModuleIndex();
-    const results: CrossFileSymbolReference[] = [];
-    for (const [symbol, bindings] of this.symbolExports) {
-      if (bindings.some(binding => binding.exportName === exportName)) {
-        results.push(this.getSymbolHandle(symbol));
-      }
-    }
-
-    return results;
+    const symbols = this.moduleIndex.findSymbolsByExportName(exportName);
+    return symbols.map(symbol => this.getSymbolHandle(symbol));
   }
 
   isPromiseLikeExpression(node: ts.Expression): boolean {
@@ -233,10 +178,11 @@ export class CrossFileAnalyzer {
   }
 
   getUsagesForSymbol(symbol: ts.Symbol): ReadonlyArray<UsageRecord> {
-    this.ensureUsageIndex();
-    const resolved = this.resolveAliasedSymbol(symbol);
-    const usages = this.symbolUsages.get(resolved);
-    return usages ? [...usages] : [];
+    return this.usageIndex.getUsagesForSymbol(symbol);
+  }
+
+  getComponentPropUsages(symbol: ts.Symbol): ReadonlyArray<PropUsageDetail> {
+    return this.usageIndex.getPropUsagesForComponent(this.resolveAliasedSymbol(symbol));
   }
 
   getSymbolMetadata(symbol: ts.Symbol): SymbolMetadata {
@@ -252,426 +198,47 @@ export class CrossFileAnalyzer {
   }
 
   getExportBindings(symbol: ts.Symbol): ReadonlyArray<ExportBindingInternal> {
-    this.ensureModuleIndex();
-    const resolved = this.resolveAliasedSymbol(symbol);
-    const bindings = this.symbolExports.get(resolved);
-    return bindings ? [...bindings] : [];
+    const bindings = this.moduleIndex.getExportBindings(symbol);
+    return bindings.map(binding => ({
+      fileName: this.resolveBindingFileName(binding),
+      exportName: binding.exportName,
+      isDefault: binding.isDefault,
+      isTypeOnly: binding.isTypeOnly,
+      symbol: binding.symbol
+    }));
   }
 
-  private ensureModuleIndex(): void {
-    if (this.moduleIndexBuilt) {
-      return;
-    }
-
-    this.moduleIndexBuilt = true;
-
-    for (const sourceFile of this.program.getSourceFiles()) {
-      if (!this.shouldAnalyzeFile(sourceFile)) {
-        continue;
-      }
-
-      const fileName = normalizeFileName(sourceFile.fileName);
-      const imports = this.collectImports(sourceFile);
-      const summary: FileSummary = {
-        fileName,
-        imports,
-        exports: []
-      };
-      this.fileSummaries.set(fileName, summary);
-
-      const moduleSymbol = this.checker.getSymbolAtLocation(sourceFile);
-      if (!moduleSymbol) {
-        continue;
-      }
-
-      const exportedSymbols = this.checker.getExportsOfModule(moduleSymbol);
-      for (const exported of exportedSymbols) {
-        const binding = this.registerExport(exported, summary);
-        if (binding) {
-          summary.exports.push(binding);
-        }
-      }
-    }
-  }
-
-  private ensureUsageIndex(): void {
-    if (this.usageIndexBuilt) {
-      return;
-    }
-
-    this.usageIndexBuilt = true;
-
-    for (const sourceFile of this.program.getSourceFiles()) {
-      if (!this.shouldAnalyzeFile(sourceFile)) {
-        continue;
-      }
-
-      this.collectUsages(sourceFile);
-    }
-  }
-
-  private shouldAnalyzeFile(sourceFile: ts.SourceFile): boolean {
-    if (sourceFile.isDeclarationFile) {
-      return false;
-    }
-
-    const normalized = normalizeFileName(sourceFile.fileName);
-    if (normalized.includes('/node_modules/')) {
-      return false;
-    }
-
-    if (normalized.endsWith('.json')) {
-      return false;
-    }
-
-    return true;
-  }
-
-  private registerExport(exported: ts.Symbol, summary: FileSummary): ExportRecord | null {
-    const exportName = exported.getName();
-    const valueSymbol = this.resolveAliasedSymbol(exported);
-    const handle = this.getSymbolHandle(valueSymbol);
-
-    if (!handle) {
-      return null;
-    }
-
-    const isTypeOnly = this.isTypeOnlyExport(exported);
-    const bindings = this.symbolExports.get(valueSymbol) ?? [];
-    const record: ExportBindingInternal = {
-      fileName: summary.fileName,
-      exportName,
-      isDefault: exportName === 'default',
-      isTypeOnly
-    };
-    bindings.push(record);
-    this.symbolExports.set(valueSymbol, bindings);
-
+  getStats(): { moduleIndex: ModuleIndexStats; usageIndex: UsageIndexStats } {
     return {
-      exportName,
-      isDefault: record.isDefault,
-      isTypeOnly,
-      symbol: handle
+      moduleIndex: this.moduleIndex.getStats(),
+      usageIndex: this.usageIndex.getStats()
     };
   }
 
-  private collectImports(sourceFile: ts.SourceFile): ImportRecord[] {
-    const records: ImportRecord[] = [];
-
-    for (const statement of sourceFile.statements) {
-      if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) {
-        continue;
-      }
-
-      const moduleName = statement.moduleSpecifier.text;
-      const resolvedFileName = this.resolveModuleFileName(sourceFile, moduleName);
-      const importClause = statement.importClause;
-
-      if (!importClause) {
-        // Side-effect import
-        continue;
-      }
-
-      if (importClause.name) {
-        records.push({
-          moduleName,
-          imported: 'default',
-          local: importClause.name.text,
-          isTypeOnly: importClause.isTypeOnly,
-          isNamespace: false,
-          resolvedFileName
-        });
-      }
-
-      if (!importClause.namedBindings) {
-        continue;
-      }
-
-      if (ts.isNamespaceImport(importClause.namedBindings)) {
-        records.push({
-          moduleName,
-          imported: '*',
-          local: importClause.namedBindings.name.text,
-          isTypeOnly: importClause.isTypeOnly,
-          isNamespace: true,
-          resolvedFileName
-        });
-        continue;
-      }
-
-      for (const element of importClause.namedBindings.elements) {
-        const importedName = element.propertyName ? element.propertyName.text : element.name.text;
-        records.push({
-          moduleName,
-          imported: importedName,
-          local: element.name.text,
-          isTypeOnly: importClause.isTypeOnly || element.isTypeOnly,
-          isNamespace: false,
-          resolvedFileName
-        });
-      }
+  private resolveBindingFileName(binding: DomainExportRecord<ts.Symbol>): string {
+    if (binding.fileName) {
+      return binding.fileName;
     }
 
-    return records;
+    const declaration = binding.symbol.declarations?.[0];
+    return declaration ? normalizeFileName(declaration.getSourceFile().fileName) : '<unknown>';
   }
 
-  private resolveModuleFileName(sourceFile: ts.SourceFile, moduleName: string): string | null {
-    const resolvedModules = (sourceFile as ts.SourceFile & {
-      resolvedModules?: Map<string, ts.ResolvedModuleFull | undefined>;
-    }).resolvedModules;
-
-    const viaSource = resolvedModules?.get(moduleName);
-    if (viaSource?.resolvedFileName) {
-      return normalizeFileName(viaSource.resolvedFileName);
-    }
-
-    try {
-      const resolution = ts.resolveModuleName(
-        moduleName,
-        sourceFile.fileName,
-        this.program.getCompilerOptions(),
-        ts.sys
-      );
-      const resolved = resolution.resolvedModule?.resolvedFileName;
-      return resolved ? normalizeFileName(resolved) : null;
-    } catch {
-      return null;
+  private debugLog(message: string, details?: unknown): void {
+    if (this.debug) {
+      this.debug(message, details);
     }
   }
 
-  private collectUsages(sourceFile: ts.SourceFile): void {
-    const visit = (node: ts.Node): void => {
-      if (ts.isCallExpression(node)) {
-        this.recordUsage(sourceFile, node.expression, node, 'call');
-      } else if (ts.isNewExpression(node)) {
-        this.recordUsage(sourceFile, node.expression, node, 'new');
-      } else if (ts.isJsxOpeningLikeElement(node)) {
-        const tag = node.tagName;
-        if (ts.isIdentifier(tag) && /^[A-Z]/.test(tag.text)) {
-          // record usage for the component itself
-          this.recordUsage(sourceFile, tag, node, 'jsx');
+  private serializeError(error: unknown): { message: string; stack?: string } | { value: unknown } {
+    if (error instanceof Error) {
+      return { message: error.message, stack: error.stack };
+    }
 
-          // collect prop-level usage details
-          const props = this.collectJsxPropUsages(node, sourceFile);
-          if (props.length > 0) {
-            const compSymbol = this.checker.getSymbolAtLocation(tag);
-            if (compSymbol) {
-              const resolved = this.resolveAliasedSymbol(compSymbol);
-              const list = this.componentPropUsages.get(resolved) ?? [];
-              for (const p of props) {
-                list.push(p);
-              }
-              this.componentPropUsages.set(resolved, list);
-            }
-          }
-        }
-      }
-
-      ts.forEachChild(node, visit);
-    };
-
-    visit(sourceFile);
+    return { value: error };
   }
 
-  private recordUsage(
-    sourceFile: ts.SourceFile,
-    expression: ts.Expression | ts.Identifier,
-    node: ts.Node,
-    kind: UsageKind
-  ): void {
-    const symbol = this.checker.getSymbolAtLocation(expression);
-    if (!symbol) {
-      return;
-    }
 
-    const resolved = this.resolveAliasedSymbol(symbol);
-    const declarations = resolved.declarations ?? [];
-    if (declarations.length === 0) {
-      return;
-    }
-
-    const currentFile = normalizeFileName(sourceFile.fileName);
-    const hasExternalDeclaration = declarations.some((declaration: ts.Declaration) =>
-      normalizeFileName(declaration.getSourceFile().fileName) !== currentFile
-    );
-
-    if (!hasExternalDeclaration) {
-      return;
-    }
-
-    const list = this.symbolUsages.get(resolved) ?? [];
-    list.push({
-      kind,
-      fileName: currentFile,
-      range: {
-        start: node.getStart(),
-        end: node.getEnd()
-      }
-    });
-    this.symbolUsages.set(resolved, list);
-  }
-
-  private collectJsxPropUsages(node: ts.JsxOpeningLikeElement, sourceFile: ts.SourceFile): PropUsageDetail[] {
-    const out: PropUsageDetail[] = [];
-    const fileName = normalizeFileName(sourceFile.fileName);
-    const attrs = (node.attributes && (node.attributes as ts.JsxAttributes).properties) || [];
-
-    const pushUsage = (
-      propName: string,
-      rangeNode: ts.Node,
-      argumentText: string | null,
-      isInline: boolean,
-      isIdentifier: boolean
-    ): void => {
-      out.push({
-        fileName,
-        range: {
-          start: rangeNode.getStart(sourceFile, false),
-          end: rangeNode.getEnd()
-        },
-        propName,
-        argumentText,
-        isInline,
-        isIdentifier
-      });
-    };
-
-    const unwrapExpression = (expr: ts.Expression): ts.Expression => {
-      let current: ts.Expression = expr;
-      while (ts.isParenthesizedExpression(current)) {
-        current = current.expression;
-      }
-      return current;
-    };
-
-    const isPrimitiveLiteral = (expr: ts.Expression): boolean => {
-      const node = unwrapExpression(expr);
-      if (ts.isLiteralExpression(node)) {
-        return true;
-      }
-
-      switch (node.kind) {
-        case ts.SyntaxKind.TrueKeyword:
-        case ts.SyntaxKind.FalseKeyword:
-        case ts.SyntaxKind.NullKeyword:
-        case ts.SyntaxKind.UndefinedKeyword:
-          return true;
-        default:
-          break;
-      }
-
-      if (ts.isPrefixUnaryExpression(node)) {
-        return isPrimitiveLiteral(node.operand);
-      }
-
-      return false;
-    };
-
-    const isInlineExpression = (expr: ts.Expression): boolean => {
-      const node = unwrapExpression(expr);
-      if (
-        ts.isArrowFunction(node) ||
-        ts.isFunctionExpression(node) ||
-        ts.isObjectLiteralExpression(node) ||
-        ts.isArrayLiteralExpression(node) ||
-        ts.isNewExpression(node) ||
-        ts.isClassExpression(node) ||
-        ts.isTemplateExpression(node)
-      ) {
-        return true;
-      }
-
-      if (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) {
-        return true;
-      }
-
-      return false;
-    };
-
-    const extractExpressionDetails = (
-      expr: ts.Expression
-    ): { argumentText: string; isInline: boolean; isIdentifier: boolean } => {
-      const unwrapped = unwrapExpression(expr);
-      const isIdentifier = ts.isIdentifier(unwrapped);
-      const isInline = !isIdentifier && !isPrimitiveLiteral(unwrapped) && isInlineExpression(unwrapped);
-
-      return {
-        argumentText: expr.getText(sourceFile),
-        isInline,
-        isIdentifier
-      };
-    };
-
-    const handleObjectLiteral = (literal: ts.ObjectLiteralExpression): void => {
-      for (const property of literal.properties) {
-        if (ts.isPropertyAssignment(property)) {
-          const name = property.name.getText(sourceFile);
-          const initializer = property.initializer;
-          if (!initializer) {
-            continue;
-          }
-
-          const { argumentText, isInline, isIdentifier } = extractExpressionDetails(initializer);
-          pushUsage(name, initializer, argumentText, isInline, isIdentifier);
-        } else if (ts.isShorthandPropertyAssignment(property)) {
-          const name = property.name.getText(sourceFile);
-          const rangeNode = property.name;
-          pushUsage(name, rangeNode, property.name.getText(sourceFile), false, true);
-        } else if (
-          ts.isMethodDeclaration(property) ||
-          ts.isGetAccessorDeclaration(property) ||
-          ts.isSetAccessorDeclaration(property)
-        ) {
-          const name = property.name.getText(sourceFile);
-          pushUsage(name, property, property.getText(sourceFile), true, false);
-        } else if (ts.isSpreadAssignment(property)) {
-          handleSpread(property.expression, property);
-        }
-      }
-    };
-
-    const handleSpread = (expression: ts.Expression | undefined, rangeNode: ts.Node): void => {
-      if (!expression) {
-        pushUsage('<<spread>>', rangeNode, null, false, false);
-        return;
-      }
-
-      const unwrapped = unwrapExpression(expression);
-      if (ts.isObjectLiteralExpression(unwrapped)) {
-        handleObjectLiteral(unwrapped);
-        return;
-      }
-
-      const details = extractExpressionDetails(expression);
-      pushUsage('<<spread>>', expression, details.argumentText, false, details.isIdentifier);
-    };
-
-    for (const attr of attrs) {
-      if (ts.isJsxAttribute(attr)) {
-        const name = ts.isIdentifier(attr.name) ? attr.name.text : attr.name.getText(sourceFile);
-        let argumentText: string | null = null;
-        let isInline = false;
-        let isIdentifier = false;
-
-        let rangeNode: ts.Node = attr;
-
-        if (attr.initializer && ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
-          const expr = attr.initializer.expression;
-          const details = extractExpressionDetails(expr);
-          argumentText = details.argumentText;
-          isInline = details.isInline;
-          isIdentifier = details.isIdentifier;
-          rangeNode = expr;
-        }
-
-        pushUsage(name, rangeNode, argumentText, isInline, isIdentifier);
-      } else if (ts.isJsxSpreadAttribute(attr)) {
-        handleSpread(attr.expression ?? undefined, attr.expression ?? attr);
-      }
-    }
-
-    return out;
-  }
 
   private getSymbolHandle(symbol: ts.Symbol): CrossFileSymbolReference {
     const resolved = this.resolveAliasedSymbol(symbol);
@@ -682,6 +249,10 @@ export class CrossFileAnalyzer {
     }
 
     return handle;
+  }
+
+  private getImporterFilesForSymbol(symbol: ts.Symbol): readonly string[] {
+    return this.moduleIndex.getImporterFilesForSymbol(symbol);
   }
 
   private determineSymbolKind(symbol: ts.Symbol): SymbolKind {
@@ -806,14 +377,25 @@ export class CrossFileAnalyzer {
       return false;
     }
 
-    const callee = node.expression;
-    if (ts.isIdentifier(callee)) {
-      return callee.text === 'memo' || callee.text === 'forwardRef';
+    if (this.isReactMemoAccessor(node.expression)) {
+      return true;
     }
 
-    if (ts.isPropertyAccessExpression(callee)) {
-      const propName = callee.name.text;
-      return propName === 'memo' || propName === 'forwardRef';
+    return node.arguments.some(arg => this.isMemoWrapperCall(arg));
+  }
+
+  private isReactMemoAccessor(expression: ts.Expression): boolean {
+    if (ts.isIdentifier(expression)) {
+      return expression.text === 'memo' || expression.text === 'forwardRef';
+    }
+
+    if (ts.isPropertyAccessExpression(expression)) {
+      const propName = expression.name.text;
+      if (propName !== 'memo' && propName !== 'forwardRef') {
+        return false;
+      }
+
+      return true;
     }
 
     return false;
@@ -984,7 +566,8 @@ export class CrossFileAnalyzer {
     if ('getBaseTypes' in type && typeof type.getBaseTypes === 'function') {
       try {
         return type.getBaseTypes() ?? [];
-      } catch {
+      } catch (error) {
+        this.debugLog('getBaseTypes.fail', { error: this.serializeError(error) });
         return [];
       }
     }
@@ -1081,14 +664,21 @@ export class CrossFileAnalyzer {
     symbol: ts.Symbol,
     declarations: readonly ts.Declaration[]
   ): readonly ts.Signature[] {
+    const resolved = this.resolveAliasedSymbol(symbol);
+    const cached = this.callSignatureCache.get(resolved);
+    if (cached) {
+      return cached;
+    }
+
     if (declarations.length === 0) {
+      this.callSignatureCache.set(resolved, []);
       return [];
     }
 
-    const declaration = declarations[0];
-    const location = declaration;
-    const type = this.checker.getTypeOfSymbolAtLocation(symbol, location);
-    return type.getCallSignatures();
+    const type = this.checker.getTypeOfSymbolAtLocation(resolved, declarations[0]);
+    const signatures = type.getCallSignatures();
+    this.callSignatureCache.set(resolved, signatures);
+    return signatures;
   }
 
   private isLikelyComponent(symbol: ts.Symbol, declarations: readonly ts.Declaration[]): boolean {
@@ -1160,15 +750,48 @@ export class CrossFileAnalyzer {
   }
 
   private returnTypeLooksLikeReactElement(type: ts.Type): boolean {
-    const textual = this.checker.typeToString(type);
-    return /(?:JSX\.Element|React\.?Element|ReactNode)/.test(textual);
+    if (!this.mightBeReactElementCandidate(type)) {
+      return false;
+    }
+
+    try {
+      const textual = this.checker.typeToString(type);
+      return REACT_RETURN_RE.test(textual);
+    } catch (error) {
+      this.debugLog('typeToString.fail', { error: this.serializeError(error) });
+      return false;
+    }
+  }
+
+  private mightBeReactElementCandidate(type: ts.Type): boolean {
+    if (type.getCallSignatures().length > 0) {
+      return true;
+    }
+
+    if (type.flags & ts.TypeFlags.Object) {
+      return true;
+    }
+
+    if (type.isUnion()) {
+      return type.types.some(part => this.mightBeReactElementCandidate(part));
+    }
+
+    if (type.isIntersection()) {
+      return type.types.some(part => this.mightBeReactElementCandidate(part));
+    }
+
+    return false;
   }
 
   private resolveAliasedSymbol(symbol: ts.Symbol): ts.Symbol {
     if (symbol.flags & ts.SymbolFlags.Alias) {
       try {
         return this.checker.getAliasedSymbol(symbol);
-      } catch {
+      } catch (error) {
+        this.debugLog('resolveAlias.fail', {
+          symbol: symbol.getName(),
+          error: this.serializeError(error)
+        });
         return symbol;
       }
     }
@@ -1196,6 +819,12 @@ export class CrossFileAnalyzer {
       return cached;
     }
 
+    if (type.isUnion()) {
+      const result = type.types.length > 0 && type.types.every((part: ts.Type) => this.isPromiseLikeType(part));
+      this.promiseTypeCache.set(type, result);
+      return result;
+    }
+
     let result = false;
 
     const checkerWithPromise = this.checker as ts.TypeChecker & {
@@ -1208,8 +837,8 @@ export class CrossFileAnalyzer {
         if (promised) {
           result = true;
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        this.debugLog('promiseType.getPromised.fail', { error: this.serializeError(error) });
       }
     }
 
@@ -1223,8 +852,8 @@ export class CrossFileAnalyzer {
         if (awaited !== type) {
           result = true;
         }
-      } catch {
-        // ignore
+      } catch (error) {
+        this.debugLog('promiseType.getAwaited.fail', { error: this.serializeError(error) });
       }
     }
 
@@ -1245,14 +874,14 @@ export class CrossFileAnalyzer {
     }
 
     if (!result) {
-      const textual = this.checker.typeToString(type);
-      if (/^Promise(?:<.*>)?$/.test(textual) || /\bPromise<.*>/.test(textual)) {
-        result = true;
+      try {
+        const textual = this.checker.typeToString(type);
+        if (/^Promise(?:<.*>)?$/.test(textual) || /\bPromise<.*>/.test(textual)) {
+          result = true;
+        }
+      } catch (error) {
+        this.debugLog('promiseType.toString.fail', { error: this.serializeError(error) });
       }
-    }
-
-    if (!result && type.isUnion()) {
-      result = type.types.length > 0 && type.types.every((part: ts.Type) => this.isPromiseLikeType(part));
     }
 
     this.promiseTypeCache.set(type, result);

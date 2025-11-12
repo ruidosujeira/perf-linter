@@ -27,3 +27,10 @@ for (const item of items) {
 
 const cachedTokens = useMemo(() => slug.split('-'), [slug]);
 ```
+
+## Options
+
+- `strictness` (`"relaxed" | "balanced" | "strict"`, default `"balanced"`): adjusts the minimum confidence and small-string threshold before reporting. Relaxed mode focuses on the most egregious cases; strict mode warns earlier.
+- `includeTestFiles` (boolean, default `true`): when `false`, suppresses diagnostics in test-like directories and files.
+- `includeStoryFiles` (boolean, default `true`): when `false`, ignores Storybook-style files.
+- `debugExplain` (boolean, default `false`): adds a confidence hint to the diagnostic, useful while calibrating strictness.
