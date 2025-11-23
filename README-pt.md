@@ -15,7 +15,7 @@
 
 - [Principais Capacidades](#principais-capacidades)
 - [Inteligência Cross-File (Novo)](#inteligência-cross-file-novo)
-- [Destaques da Versão — 0.4.0](#destaques-da-versão--040)
+- [Destaques da Versão — 0.5.0](#destaques-da-versão--050)
 - [Primeiros Passos](#primeiros-passos)
 - [Guias de Migração](#guias-de-migração)
 - [Catálogo de Regras](#catálogo-de-regras)
@@ -31,7 +31,9 @@
 
 - 🚦 Detecta padrões ineficientes em coleções e iterações que geram trabalho desnecessário.
 - 🧠 Protege memoização em React, sinalizando props instáveis, arrays de dependência e lógica inline durante renderização.
+- 🫧 Evita churn em Context.Provider alertando sobre objetos/arrays inline antes que derrubem todos os consumidores.
 - 🛰️ Correlaciona metadata de símbolos através de arquivos para entender fronteiras de memoização, tipos esperados de prop e contratos assíncronos.
+- 📦 Bloqueia entrypoints pesados (`lodash`, `moment`, SDKs legados) para reforçar disciplina de imports enxutos.
 - 🔥 Evita travamentos em runtime causados por backtracking catastrófico de expressões regulares.
 - ⚡️ Expõe fluxos assíncronos não tratados que engolem falhas silenciosamente.
 - ✨ Disponibiliza presets clássicos e flat do ESLint para adoção rápida.
@@ -71,13 +73,14 @@ src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise retu
 
 Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o tipo esperado de prop, acelerando correções com confiança.
 
-## Destaques da Versão — 0.4.0
+## Destaques da Versão — 0.5.0
 
-- 🚀 **Indexação sob demanda:** Os índices de módulos e usos agora são construídos preguiçosamente, reduzindo o tempo de inicialização em lintes de projetos grandes.
-- 🧭 **Coleta de usos com consciência de importadores:** O rastreamento de JSX e chamadas segue o grafo real de imports, analisando apenas os arquivos relevantes.
-- 📊 **Traces com estatísticas:** Ao habilitar `debugExplain` (por exemplo em `perf-fiscal/no-unhandled-promises`), o trace passa a incluir `analyzerStats` com a contagem de arquivos indexados por subsistema.
+- 🚀 **Indexação sob demanda:** os índices de módulos e usos agora são construídos preguiçosamente, reduzindo o tempo de inicialização em lints de projetos grandes.
+- 🧭 **Coleta de usos com consciência de importadores:** o rastreamento de JSX e chamadas segue o grafo real de imports, analisando apenas os arquivos relevantes.
+- 🧱 **Traces com estatísticas:** ao habilitar `debugExplain` (ex.: `perf-fiscal/no-unhandled-promises`), o trace passa a incluir `analyzerStats` com a contagem de arquivos indexados por subsistema.
+- 🧯 **Novas salvaguardas:** `no-heavy-bundle-imports` impede entrypoints monolíticos enquanto `no-inline-context-value` mantém árvores de Context estáveis antes que regressões cheguem à produção.
 
-Veja as notas completas em [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md). Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
+Veja as notas completas em [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md) enquanto o changelog 0.5.0 é finalizado. Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
 
 ```json
 {
@@ -85,7 +88,7 @@ Veja as notas completas em [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md). P
 }
 ```
 
-Encontrou regressão ou alerta barulhento? Abra o novo [template de False Positive](https://github.com/ruidosujeira/perf-linter/issues/new?template=false-positive.md) para agilizar o triagem.
+Encontrou regressão ou alerta barulhento? Abra o [template de False Positive](https://github.com/ruidosujeira/perf-linter/issues/new?template=false-positive.md) para agilizar o triagem.
 
 ## Primeiros Passos
 
@@ -176,7 +179,9 @@ Cada regra possui documentação detalhada em `docs/rules/<nome-da-regra>.md`.
 | `perf-fiscal/detect-unnecessary-rerenders` | 🚦 Handlers inline passados para filhos memoizados | Extraia callbacks ou use `useCallback` | [docs/rules/detect-unnecessary-rerenders.md](docs/rules/detect-unnecessary-rerenders.md) |
 | `perf-fiscal/no-expensive-computations-in-render` | 🧮 Trabalho síncrono pesado durante renderizações | Movê-lo para `useMemo` ou fora do componente | [docs/rules/no-expensive-computations-in-render.md](docs/rules/no-expensive-computations-in-render.md) |
 | `perf-fiscal/no-expensive-split-replace` | 🔁 `split`/`replace` repetidos em loops quentes | Pré-computar e reutilizar resultados | [docs/rules/no-expensive-split-replace.md](docs/rules/no-expensive-split-replace.md) |
-| `perf-fiscal/no-redos-regex` | 🔥 Regex com backtracking catastrófico | Reescrever expressão ou adicionar limites explícitos | [docs/rules/no-redos-regex.md](docs/rules/no-redos-regex.md) |
+| `perf-fiscal/no-heavy-bundle-imports` | 📦 Imports default de pacotes pesados (`lodash`, `moment`, SDKs legados) | Migrar para subpaths ou alternativas leves | [docs/rules/no-heavy-bundle-imports.md](docs/rules/no-heavy-bundle-imports.md) |
+| `perf-fiscal/no-inline-context-value` | 🫧 Objetos/arrays inline em `Context.Provider value` | Envolver em `useMemo` ou extrair fora do render | [docs/rules/no-inline-context-value.md](docs/rules/no-inline-context-value.md) |
+| `perf-fiscal/no-quadratic-complexity` | 🧮 Loops aninhados de crescimento quadrático | Refatorar ou pré-indexar coleções | [docs/rules/no-quadratic-complexity.md](docs/rules/no-quadratic-complexity.md) |
 | `perf-fiscal/no-unhandled-promises` | ⚠️ Promises ignoradas | `await` ou encadear `.catch`/`.then` | [docs/rules/no-unhandled-promises.md](docs/rules/no-unhandled-promises.md) |
 | `perf-fiscal/no-unstable-inline-props` | ✋ Funções/objetos inline e spreads que mudam referências | Memorizar antes de passar como prop | [docs/rules/no-unstable-inline-props.md](docs/rules/no-unstable-inline-props.md) |
 | `perf-fiscal/no-unstable-usememo-deps` | 🧩 Valores instáveis em arrays de dependência | Memorizar dependências ou movê-las para fora do render | [docs/rules/no-unstable-usememo-deps.md](docs/rules/no-unstable-usememo-deps.md) |
@@ -198,6 +203,12 @@ Cada regra possui documentação detalhada em `docs/rules/<nome-da-regra>.md`.
     checkFunctions: true,
     checkObjects: true,
     checkSpreads: true
+  }],
+  'perf-fiscal/no-heavy-bundle-imports': ['warn', {
+    packages: [
+      { name: 'lodash', suggestSubpath: true },
+      { name: '@org/legacy-sdk', allowNamed: true }
+    ]
   }]
   ```
 - 🧮 **Presets de rigor de performance:** As regras mais ruidosas agora compartilham opções como `strictness` (`relaxed` \| `balanced` \| `strict`), `includeTestFiles`, `includeStoryFiles` e `debugExplain`. Use-as para controlar o nível de ruído, ignorar pastas de fixtures ou exibir pistas de confiança:
@@ -256,57 +267,31 @@ const Panel = ({ onSubmit }) => {
 };
 ```
 
-## Compatibilidade
+### Memorize Valores de Context Providers
 
-- **Node.js:** 18+
-- **ESLint:** ^8.57.0 ou ^9.x
-- **TypeScript:** 5.5.x (alinhado com `@typescript-eslint`)
-- **React:** Diagnósticos assumem semântica de hooks do React 16.8+
+```tsx
+// Antes: objeto inline invalida todos os consumidores a cada render
+return (
+  <UserContext.Provider value={{ name, role, refresh: () => refetch() }}>
+    <Profile />
+  </UserContext.Provider>
+);
 
-🧪 RuleTester tipado: nosso [runner tipado](tests/utils/rule-tester.ts) e a CI simulam projetos React+TS reais com uso cross-file, garantindo que cada regra seja coberta com suporte do analyzer.
-
-## Fluxo de Desenvolvimento
-
-```bash
-npm install
-npm run lint
-npm run test
-npm run build
+// Depois: memoize para manter o Context estável
+const providerValue = useMemo(() => ({ name, role, refresh: () => refetch() }), [name, role, refetch]);
+return (
+  <UserContext.Provider value={providerValue}>
+    <Profile />
+  </UserContext.Provider>
+);
 ```
 
-Garanta que o código compile, os testes passem e o lint esteja limpo antes de abrir um pull request.
+### Evite Entrypoints Pesados
 
-## Como Contribuir
+```ts
+// Antes: importa todo o build do lodash
+import { map } from 'lodash';
 
-### Participe das discussões
-- Acesse o [GitHub Discussions](https://github.com/ruidosujeira/perf-linter/discussions) para tirar dúvidas, propor ideias ou responder ao resumo semanal de auditoria. Comece pelo template "Community check-in" para que mantenedores entendam como ajudar.
-- Assine as notificações de anúncios para saber quando um novo relatório for publicado ou quando houver encontros da comunidade.
-
-### Encontre uma primeira tarefa
-- Navegue pelas issues com o rótulo [`good first issue`](https://github.com/ruidosujeira/perf-linter/labels/good%20first%20issue) para atividades rápidas que ajudam a conhecer a base de código.
-- Prefere orientação em português? Filtre pelo rótulo [`boa primeira contribuição`](https://github.com/ruidosujeira/perf-linter/labels/boa%20primeira%20contribui%C3%A7%C3%A3o) — cada tarefa traz passos claros, critérios de aceite e mentores disponíveis.
-
-### Entregue mudanças com confiança
-1. Abra uma issue descrevendo a heurística de performance, sinal proposto e tolerância a falsos positivos.
-2. Implemente a regra em `src/rules/`, adicione cobertura em `tests/rules/` e documente em `docs/rules/<nome-da-regra>.md`.
-3. Exporte a regra em `src/index.ts`, atualize os presets recomendados se necessário e referencie a documentação.
-4. Rode o pipeline (`npm run lint`, `npm run test`, `npm run build`).
-5. Envie o pull request explicando o sinal, a motivação e casos de borda conhecidos.
-
-### Acompanhe os relatórios semanais
-- Toda segunda-feira publicamos uma auditoria comunitária usando o [template do relatório semanal](.github/weekly-audit-report.md). O resumo destaca novos contribuidores, issues prioritárias e resultados das discussões.
-- Perdeu alguma atualização? Confira a categoria de Anúncios nas Discussões para acessar o histórico e chamadas em andamento.
-
-Precisa de ajuda para criar novas regras? Fale em inglês ou português — a comunidade está pronta para apoiar!
-
-## Licença
-
-Perf Fiscal é distribuído sob a [Licença MIT](LICENSE).
-
----
-
-Traga a disciplina de um engenheiro de performance para cada review. Adote o Perf Fiscal para manter seu código enxuto, previsível e pronto para produção.
-
-## Fique por Dentro
-
-💬 Quer novidades? ⭐️ Dê uma estrela e acompanhe [ruidosujeira/perf-linter](https://github.com/ruidosujeira/perf-linter) para ser avisado sobre novas heurísticas.
+// Depois: traga apenas o necessário
+import map from 'lodash/map';
+```
