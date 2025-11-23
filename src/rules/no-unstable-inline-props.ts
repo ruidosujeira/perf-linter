@@ -217,7 +217,8 @@ function evaluateInitializerKind(
   initializer: ts.Expression | undefined,
   componentTs: ts.Node,
   services: AnalyzerServices,
-  visitedSymbols: Set<ts.Symbol>
+  visitedSymbols: Set<ts.Symbol>,
+  depth: number
 ): UnstableKind | null {
   if (!initializer) {
     return null;
@@ -253,8 +254,8 @@ function evaluateInitializerKind(
   }
 
   if (ts.isConditionalExpression(stripped)) {
-    const whenTrue = evaluateInitializerKind(stripped.whenTrue, componentTs, services, visitedSymbols);
-    const whenFalse = evaluateInitializerKind(stripped.whenFalse, componentTs, services, visitedSymbols);
+    const whenTrue = evaluateInitializerKind(stripped.whenTrue, componentTs, services, visitedSymbols, depth);
+    const whenFalse = evaluateInitializerKind(stripped.whenFalse, componentTs, services, visitedSymbols, depth);
     if (whenTrue && whenTrue === whenFalse) {
       return whenTrue;
     }
@@ -268,11 +269,11 @@ function evaluateInitializerKind(
       operator === ts.SyntaxKind.AmpersandAmpersandToken ||
       operator === ts.SyntaxKind.QuestionQuestionToken
     ) {
-      const right = evaluateInitializerKind(stripped.right, componentTs, services, visitedSymbols);
+      const right = evaluateInitializerKind(stripped.right, componentTs, services, visitedSymbols, depth);
       if (right) {
         return right;
       }
-      return evaluateInitializerKind(stripped.left, componentTs, services, visitedSymbols);
+      return evaluateInitializerKind(stripped.left, componentTs, services, visitedSymbols, depth);
     }
   }
 
@@ -281,7 +282,7 @@ function evaluateInitializerKind(
     if (!symbol) {
       return null;
     }
-    return evaluateSymbolKind(resolveSymbol(symbol, checker), componentTs, services, visitedSymbols);
+    return evaluateSymbolKind(resolveSymbol(symbol, checker), componentTs, services, visitedSymbols, depth + 1);
   }
 
   if (ts.isPropertyAccessExpression(stripped)) {
@@ -289,7 +290,7 @@ function evaluateInitializerKind(
     if (!symbol) {
       return null;
     }
-    return evaluateSymbolKind(resolveSymbol(symbol, checker), componentTs, services, visitedSymbols);
+    return evaluateSymbolKind(resolveSymbol(symbol, checker), componentTs, services, visitedSymbols, depth + 1);
   }
 
   return null;

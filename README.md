@@ -33,7 +33,9 @@
 
 - 🚦 Detects inefficient collection and iteration patterns that perform unnecessary work.
 - 🧠 Guards React memoization by flagging unstable props, dependency arrays, and inline render logic.
+- 🫧 Prevents Context.Provider churn by warning on inline `value` objects/arrays before they cascade re-renders across consumers.
 - 🛰️ Correlates symbol metadata across files to understand memoization boundaries, prop kinds, and async contracts.
+- 📦 Flags heavy bundle entrypoints (lodash, moment, legacy SDKs) so teams enforce lean import discipline.
 - 🔥 Prevents runtime stalls caused by catastrophic regular-expression backtracking.
 - ⚡️ Surfaces unhandled asynchronous flows that silently swallow failures.
 - ✨ Provides both classic and flat ESLint configuration presets for rapid adoption.
@@ -77,7 +79,8 @@ These examples show how analyzer-backed diagnostics include origin and expected 
 
 - 🚀 **On-demand indexing:** Module and usage indices now build lazily, shrinking cold-start time for project-sized lint runs.
 - 🧭 **Importer-aware usage scans:** JSX and call-site tracking follows real import graphs so only relevant files are analyzed.
-- 📊 **Explain traces with stats:** When `debugExplain` is enabled (e.g. on `perf-fiscal/no-unhandled-promises`), the trace now includes an `analyzerStats` step showing how many files were indexed by each subsystem.
+- 🧱 **Explain traces with stats:** When `debugExplain` is enabled (e.g. on `perf-fiscal/no-unhandled-promises`), the trace now includes an `analyzerStats` step showing how many files were indexed by each subsystem.
+- 🧯 **New guardrails:** `no-heavy-bundle-imports` blocks monolithic entrypoints while `no-inline-context-value` keeps React Context trees stable without waiting for production regressions.
 
 See the detailed notes in [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md). To opt out of the new trace data, keep `debugExplain` set to `false` (the default) or disable it per-rule:
 
@@ -178,6 +181,9 @@ Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
 | `perf-fiscal/detect-unnecessary-rerenders` | 🚦 Inline handlers passed to memoized children | Hoist callbacks or wrap with `useCallback` | [docs/rules/detect-unnecessary-rerenders.md](docs/rules/detect-unnecessary-rerenders.md) |
 | `perf-fiscal/no-expensive-computations-in-render` | 🧮 Heavy synchronous work executed during renders | Move logic into `useMemo` or outside the component | [docs/rules/no-expensive-computations-in-render.md](docs/rules/no-expensive-computations-in-render.md) |
 | `perf-fiscal/no-expensive-split-replace` | 🔁 Repeated string `split`/`replace` inside hot loops | Pre-compute and reuse results | [docs/rules/no-expensive-split-replace.md](docs/rules/no-expensive-split-replace.md) |
+| `perf-fiscal/no-heavy-bundle-imports` | 📦 Default imports from hefty packages (`lodash`, `moment`, legacy SDKs) | Switch to subpath imports or lighter alternatives | [docs/rules/no-heavy-bundle-imports.md](docs/rules/no-heavy-bundle-imports.md) |
+| `perf-fiscal/no-inline-context-value` | 🫧 Inline objects/arrays passed to `Context.Provider value` | Wrap the value in `useMemo` or hoist it outside renders | [docs/rules/no-inline-context-value.md](docs/rules/no-inline-context-value.md) |
+| `perf-fiscal/no-quadratic-complexity` | 🧮 Nested loops that scale quadratically | Refactor loops or pre-index collections | [docs/rules/no-quadratic-complexity.md](docs/rules/no-quadratic-complexity.md) |
 | `perf-fiscal/no-redos-regex` | 🔥 Regular expressions prone to catastrophic backtracking | Rewrite expression or add explicit bounds | [docs/rules/no-redos-regex.md](docs/rules/no-redos-regex.md) |
 | `perf-fiscal/no-unhandled-promises` | ⚠️ Ignored Promise rejections | Await or attach `.catch`/`.then` handlers | [docs/rules/no-unhandled-promises.md](docs/rules/no-unhandled-promises.md) |
 | `perf-fiscal/no-unstable-inline-props` | ✋ Inline functions/objects and prop spreads that churn references | Hoist or memoize prop values before passing | [docs/rules/no-unstable-inline-props.md](docs/rules/no-unstable-inline-props.md) |
@@ -200,6 +206,12 @@ Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
     checkFunctions: true,
     checkObjects: true,
     checkSpreads: true
+  }],
+  'perf-fiscal/no-heavy-bundle-imports': ['warn', {
+    packages: [
+      { name: 'lodash', suggestSubpath: true },
+      { name: '@org/legacy-sdk', allowNamed: true }
+    ]
   }]
   ```
 - 🧮 **Performance strictness presets:** The high-signal rules now accept shared options—`strictness` (`relaxed` \| `balanced` \| `strict`), `includeTestFiles`, `includeStoryFiles`, and `debugExplain`. Use them to dial noise, skip fixture-heavy folders, or surface confidence hints:
@@ -256,6 +268,35 @@ const Panel = ({ onSubmit }) => {
   const formProps = useMemo(() => ({ onSubmit: () => onSubmit() }), [onSubmit]);
   return <Form {...formProps} />;
 };
+```
+
+### Memoize Context Provider Values
+
+```tsx
+// Before: inline object invalidates every consumer on render
+return (
+  <UserContext.Provider value={{ name, role, refresh: () => refetch() }}>
+    <Profile />
+  </UserContext.Provider>
+);
+
+// After: memoize the value to keep Context stable
+const providerValue = useMemo(() => ({ name, role, refresh: () => refetch() }), [name, role, refetch]);
+return (
+  <UserContext.Provider value={providerValue}>
+    <Profile />
+  </UserContext.Provider>
+);
+```
+
+### Avoid Heavy Bundle Entrypoints
+
+```ts
+// Before: pulls entire lodash build
+import { map } from 'lodash';
+
+// After: import only what is needed
+import map from 'lodash/map';
 ```
 
 ### Cross-file analyzer in action

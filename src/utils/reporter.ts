@@ -1,3 +1,10 @@
+export interface AnalyzerMetricSnapshot {
+  analyzer: string;
+  filesIndexed: number;
+  durationMs: number;
+  extra?: Record<string, unknown>;
+}
+
 export interface PerformanceReport {
   summary: {
     filesAnalyzed: number;
@@ -28,7 +35,7 @@ export interface PerformanceReport {
   };
   // Placeholder type imported from analyzer in the future
   // Keeping as any to avoid coupling for now
-  analyzerMetrics: any;
+  analyzerMetrics: AnalyzerMetricSnapshot[];
 }
 
 export function generateHTMLReport(_report: PerformanceReport): string {

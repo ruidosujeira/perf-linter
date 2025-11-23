@@ -53,8 +53,8 @@ export default createRule<Options, MessageIds>({
         }
 
         const expr = valueAttr.value.expression;
-        // Ignore spread or empty expressions
-        if (!expr || expr.type === AST_NODE_TYPES.SpreadElement) return;
+        // Ignore empty expressions
+        if (!expr || expr.type === AST_NODE_TYPES.JSXEmptyExpression) return;
 
         const unwrapped = unwrapExpression(expr);
         if (isInlineObject(unwrapped)) {
