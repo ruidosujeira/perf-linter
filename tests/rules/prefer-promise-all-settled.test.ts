@@ -28,6 +28,9 @@ ruleTester.run('prefer-promise-all-settled', rule, {
       code: `
         Promise.all(tasks).catch(handleError);
       `,
+      output: `
+        Promise.allSettled(tasks).catch(handleError);
+      `,
       errors: [{ messageId: 'preferAllSettled' }]
     },
     {
@@ -35,6 +38,15 @@ ruleTester.run('prefer-promise-all-settled', rule, {
         async function load(promises: Promise<unknown>[]) {
           try {
             await Promise.all(promises);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+      `,
+      output: `
+        async function load(promises: Promise<unknown>[]) {
+          try {
+            await Promise.allSettled(promises);
           } catch (error) {
             console.error(error);
           }

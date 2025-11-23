@@ -60,7 +60,7 @@ export default createRule<Options, MessageIds>({
         'Encourage simple loops to use for/of instead of Array.forEach or Array.map when the return value is unused.',
       recommended: 'recommended'
     },
-    fixable: undefined,
+    fixable: 'code',
     schema: [],
     messages: {
       preferForOfMap:
@@ -92,16 +92,45 @@ export default createRule<Options, MessageIds>({
         }
 
         if (propertyName === 'forEach') {
-          const [callback] = node.arguments;
-          if (
-            callback &&
-            (callback.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-              callback.type === AST_NODE_TYPES.FunctionExpression)
-          ) {
+          const [callback, thisArg] = node.arguments;
+          if (!callback) return;
+          const isArrowOrFn =
+            callback.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+            callback.type === AST_NODE_TYPES.FunctionExpression;
+          if (!isArrowOrFn) return;
+
+          // Only auto-fix the simple pattern: one parameter identifier, no thisArg provided
+          const simpleParam =
+            callback.params.length === 1 && callback.params[0].type === AST_NODE_TYPES.Identifier
+              ? callback.params[0]
+              : null;
+
+          const canFix = simpleParam && !thisArg;
+
+          if (canFix) {
+            const sourceCode = context.getSourceCode();
+            const arrayText = sourceCode.getText(node.callee.object);
+            const itemName = simpleParam!.name;
+            const body = callback.body;
+            const bodyText =
+              body.type === AST_NODE_TYPES.BlockStatement
+                ? sourceCode.getText(body)
+                : `{ ${sourceCode.getText(body)}; }`;
+
             context.report({
               node,
-              messageId: 'preferForOfForEach'
+              messageId: 'preferForOfForEach',
+              fix(fixer) {
+                const loop = `for (const ${itemName} of ${arrayText}) ${bodyText}`;
+                return fixer.replaceText(node, loop);
+              }
             });
+            return;
+          }
+
+          // Otherwise, report without fixer
+          if (isArrowOrFn) {
+            context.report({ node, messageId: 'preferForOfForEach' });
           }
         }
       }

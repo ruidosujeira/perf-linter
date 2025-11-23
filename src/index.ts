@@ -12,6 +12,8 @@ import preferArraySome from './rules/prefer-array-some';
 import preferForOf from './rules/prefer-for-of';
 import preferObjectHasOwn from './rules/prefer-object-hasown';
 import preferPromiseAllSettled from './rules/prefer-promise-all-settled';
+import noHeavyBundleImports from './rules/no-heavy-bundle-imports';
+import noInlineContextValue from './rules/no-inline-context-value';
 
 const PLUGIN_NAME = 'perf-fiscal';
 
@@ -29,7 +31,9 @@ export const rules: PluginRules = {
   'no-expensive-computations-in-render': noExpensiveComputationsInRender,
   'no-expensive-split-replace': noExpensiveSplitReplace,
   'no-unstable-inline-props': noUnstableInlineProps,
-  'no-quadratic-complexity': noQuadraticComplexity
+  'no-quadratic-complexity': noQuadraticComplexity,
+  'no-heavy-bundle-imports': noHeavyBundleImports,
+  'no-inline-context-value': noInlineContextValue
 };
 
 const recommendedRules: TSESLint.FlatConfig.Rules = {
@@ -44,7 +48,9 @@ const recommendedRules: TSESLint.FlatConfig.Rules = {
   [`${PLUGIN_NAME}/no-expensive-computations-in-render`]: 'warn',
   [`${PLUGIN_NAME}/no-expensive-split-replace`]: 'warn',
   [`${PLUGIN_NAME}/no-unstable-inline-props`]: 'warn',
-  [`${PLUGIN_NAME}/no-quadratic-complexity`]: 'warn'
+  [`${PLUGIN_NAME}/no-quadratic-complexity`]: 'warn',
+  [`${PLUGIN_NAME}/no-heavy-bundle-imports`]: 'warn',
+  [`${PLUGIN_NAME}/no-inline-context-value`]: 'warn'
 };
 
 const classicRecommendedConfig: TSESLint.ClassicConfig.Config = {

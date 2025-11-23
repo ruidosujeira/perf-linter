@@ -47,6 +47,8 @@ const componentTsNodeCache = new WeakMap<FunctionNode, ts.Node | null>();
 const expressionKindCache = new WeakMap<TSESTree.Node, UnstableKind | null>();
 const symbolKindCache = new WeakMap<ts.Symbol, UnstableKind | null>();
 
+const MAX_RECURSION_DEPTH = 10;
+
 function isCustomComponent(opening: TSESTree.JSXOpeningElement): boolean {
   const { name } = opening;
   if (name.type === AST_NODE_TYPES.JSXIdentifier) {
@@ -309,7 +311,8 @@ function evaluateBindingElementKind(
   binding: ts.BindingElement,
   componentTs: ts.Node,
   services: AnalyzerServices,
-  visitedSymbols: Set<ts.Symbol>
+  visitedSymbols: Set<ts.Symbol>,
+  depth: number
 ): UnstableKind | null {
   const checker = services.analyzer.getTypeChecker();
   const pattern = binding.parent;
@@ -335,7 +338,7 @@ function evaluateBindingElementKind(
     if (!symbol) {
       return null;
     }
-    return evaluateSymbolKind(resolveSymbol(symbol, checker), componentTs, services, visitedSymbols);
+    return evaluateSymbolKind(resolveSymbol(symbol, checker), componentTs, services, visitedSymbols, depth + 1);
   }
 
   if (ts.isObjectLiteralExpression(strippedInitializer)) {
@@ -346,13 +349,19 @@ function evaluateBindingElementKind(
 
     for (const property of strippedInitializer.properties) {
       if (ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === propertyName) {
-        return evaluateInitializerKind(property.initializer, componentTs, services, visitedSymbols);
+        return evaluateInitializerKind(property.initializer, componentTs, services, visitedSymbols, depth + 1);
       }
 
       if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
         const shorthandSymbol = checker.getSymbolAtLocation(property.name);
         if (shorthandSymbol) {
-          return evaluateSymbolKind(resolveSymbol(shorthandSymbol, checker), componentTs, services, visitedSymbols);
+          return evaluateSymbolKind(
+            resolveSymbol(shorthandSymbol, checker),
+            componentTs,
+            services,
+            visitedSymbols,
+            depth + 1
+          );
         }
       }
     }
@@ -364,25 +373,26 @@ function evaluateBindingElementKind(
     return 'object';
   }
 
-  return evaluateInitializerKind(strippedInitializer, componentTs, services, visitedSymbols);
+  return evaluateInitializerKind(strippedInitializer, componentTs, services, visitedSymbols, depth + 1);
 }
 
 function evaluateDeclarationKind(
   declaration: ts.Declaration,
   componentTs: ts.Node,
   services: AnalyzerServices,
-  visitedSymbols: Set<ts.Symbol>
+  visitedSymbols: Set<ts.Symbol>,
+  depth: number
 ): UnstableKind | null {
   if (ts.isFunctionLike(declaration)) {
     return 'function';
   }
 
   if (ts.isVariableDeclaration(declaration)) {
-    return evaluateInitializerKind(declaration.initializer, componentTs, services, visitedSymbols);
+    return evaluateInitializerKind(declaration.initializer, componentTs, services, visitedSymbols, depth + 1);
   }
 
   if (ts.isBindingElement(declaration)) {
-    return evaluateBindingElementKind(declaration, componentTs, services, visitedSymbols);
+    return evaluateBindingElementKind(declaration, componentTs, services, visitedSymbols, depth + 1);
   }
 
   if (ts.isParameter(declaration)) {
@@ -396,8 +406,12 @@ function evaluateSymbolKind(
   symbol: ts.Symbol,
   componentTs: ts.Node,
   services: AnalyzerServices,
-  visitedSymbols: Set<ts.Symbol>
+  visitedSymbols: Set<ts.Symbol>,
+  depth: number = 0
 ): UnstableKind | null {
+  if (depth >= MAX_RECURSION_DEPTH) {
+    return null;
+  }
   if (symbolKindCache.has(symbol)) {
     return symbolKindCache.get(symbol) ?? null;
   }
@@ -420,7 +434,7 @@ function evaluateSymbolKind(
       break;
     }
 
-    const evaluated = evaluateDeclarationKind(declaration, componentTs, services, visitedSymbols);
+    const evaluated = evaluateDeclarationKind(declaration, componentTs, services, visitedSymbols, depth + 1);
     if (evaluated === 'function') {
       result = 'function';
       break;
@@ -477,7 +491,7 @@ function evaluateExpressionKind(
 
         if (symbol) {
           const resolved = resolveSymbol(symbol, checker);
-          result = evaluateSymbolKind(resolved, componentTs, services, visitedSymbols);
+          result = evaluateSymbolKind(resolved, componentTs, services, visitedSymbols, 0);
         }
       }
     }

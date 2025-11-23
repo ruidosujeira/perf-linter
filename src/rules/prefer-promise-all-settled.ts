@@ -55,6 +55,7 @@ export default createRule<Options, MessageIds>({
         'Prefer Promise.allSettled when you intend to tolerate individual rejections from a batch of Promises.',
       recommended: 'recommended'
     },
+    fixable: 'code',
     schema: [],
     messages: {
       preferAllSettled:
@@ -81,9 +82,19 @@ export default createRule<Options, MessageIds>({
         }
 
         reportedNodes.add(target);
+        const sourceCode = context.getSourceCode();
         context.report({
           node: target,
-          messageId: 'preferAllSettled'
+          messageId: 'preferAllSettled',
+          fix(fixer) {
+            // Safe auto-fix for chained .catch(): Promise.all(x).catch(...) -> Promise.allSettled(x).catch(...)
+            const callee = (target as TSESTree.CallExpression).callee as TSESTree.MemberExpression;
+            const fullText = sourceCode.getText(callee);
+            // Replace trailing .all with .allSettled in callee text
+            // callee looks like: Promise.all
+            const replaced = fullText.replace(/\.all\b/, '.allSettled');
+            return fixer.replaceText(callee, replaced);
+          }
         });
       },
       AwaitExpression(node: TSESTree.AwaitExpression) {
@@ -102,9 +113,18 @@ export default createRule<Options, MessageIds>({
         }
 
         reportedNodes.add(node.argument);
+        const sourceCode = context.getSourceCode();
         context.report({
           node: node.argument,
-          messageId: 'preferAllSettled'
+          messageId: 'preferAllSettled',
+          fix(fixer) {
+            // Conservative fix: only rewrite Promise.all → Promise.allSettled; keep try/catch as-is
+            const call = node.argument as TSESTree.CallExpression;
+            const callee = call.callee as TSESTree.MemberExpression;
+            const fullText = sourceCode.getText(callee);
+            const replaced = fullText.replace(/\.all\b/, '.allSettled');
+            return fixer.replaceText(callee, replaced);
+          }
         });
       }
     };

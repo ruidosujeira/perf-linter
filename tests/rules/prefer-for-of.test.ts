@@ -22,6 +22,7 @@ ruleTester.run('prefer-for-of', rule, {
     },
     {
       code: 'items.forEach(item => console.log(item));',
+      output: 'for (const item of items) { console.log(item); };',
       errors: [{ messageId: 'preferForOfForEach' }]
     }
   ]

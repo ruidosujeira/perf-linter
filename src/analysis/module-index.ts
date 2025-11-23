@@ -8,6 +8,9 @@ export interface ModuleIndexOptions {
   resolveAliasedSymbol(symbol: ts.Symbol): ts.Symbol;
   isTypeOnlyExport(symbol: ts.Symbol): boolean;
   debug?(message: string, details?: unknown): void;
+  // Optional performance tuning: number of distinct file requests before forcing a full index
+  // Defaults to 100 if not provided
+  indexThreshold?: number;
 }
 
 export interface ModuleIndexStats {
@@ -23,27 +26,41 @@ export class ModuleIndex {
   private readonly moduleImporters = new Map<string, Set<string>>();
   private processedFileCount = 0;
   private isFullyBuilt = false;
+  private readonly indexThreshold: number;
+  private filesRequestedCount = 0;
 
   constructor(private readonly options: ModuleIndexOptions) {
+    this.indexThreshold = options.indexThreshold ?? 100;
     for (const sourceFile of this.options.program.getSourceFiles()) {
       const normalized = normalizeFileName(sourceFile.fileName);
       this.sourceFileByName.set(normalized, sourceFile);
     }
   }
 
+  private shouldFullIndex(): boolean {
+    return this.filesRequestedCount >= this.indexThreshold;
+  }
+
   ensure(): void {
     if (this.isFullyBuilt) {
       return;
     }
+    // Only perform full indexing when enough files have been requested to justify the cost
+    if (this.shouldFullIndex()) {
+      this.ensureAll();
+    }
+  }
 
+  private ensureAll(): void {
+    if (this.isFullyBuilt) return;
     for (const sourceFile of this.options.program.getSourceFiles()) {
       this.ensureSourceFile(sourceFile);
     }
-
     this.isFullyBuilt = true;
   }
 
   getFileSummary(fileName: string): FileSummary<ts.Symbol> | null {
+    this.filesRequestedCount++;
     const normalized = normalizeFileName(fileName);
     this.ensureFile(normalized);
     const summary = this.fileSummaries.get(normalized);
@@ -59,6 +76,7 @@ export class ModuleIndex {
   }
 
   findExportedSymbol(fileName: string, exportName: string): ts.Symbol | null {
+    this.filesRequestedCount++;
     const normalized = normalizeFileName(fileName);
     this.ensureFile(normalized);
     const summary = this.fileSummaries.get(normalized);
@@ -76,7 +94,8 @@ export class ModuleIndex {
   }
 
   findSymbolsByExportName(exportName: string): ts.Symbol[] {
-    this.ensure();
+    // Requires global knowledge of all exports; ensure full index
+    this.ensureAll();
     const results: ts.Symbol[] = [];
     for (const [symbol, bindings] of this.symbolExports) {
       if (bindings.some(binding => binding.exportName === exportName)) {
@@ -87,14 +106,16 @@ export class ModuleIndex {
   }
 
   getExportBindings(symbol: ts.Symbol): readonly ExportRecord<ts.Symbol>[] {
-    this.ensure();
+    // Bindings lookup relies on a complete view; ensure full index
+    this.ensureAll();
     const resolved = this.options.resolveAliasedSymbol(symbol);
     const bindings = this.symbolExports.get(resolved);
     return bindings ? [...bindings] : [];
   }
 
   getImporterFilesForSymbol(symbol: ts.Symbol): readonly string[] {
-    this.ensure();
+    // Importer analysis requires full module map; ensure full index
+    this.ensureAll();
     const resolved = this.options.resolveAliasedSymbol(symbol);
     const candidateModules = new Set<string>();
     const bindings = this.symbolExports.get(resolved) ?? [];
