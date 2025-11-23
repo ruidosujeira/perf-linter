@@ -17,7 +17,7 @@
 
 - [Key Capabilities](#key-capabilities)
 - [Cross-File Intelligence (New)](#cross-file-intelligence-new)
-- [Release Highlights — 0.4.0](#release-highlights--040)
+- [Release Highlights — 0.5.0](#release-highlights--050)
 - [Getting Started](#getting-started)
 - [Migration Guides](#migration-guides)
 - [Rule Catalog](#rule-catalog)
@@ -75,14 +75,14 @@ src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise retu
 
 These examples show how analyzer-backed diagnostics include origin and expected prop-kind, making fixes faster and more confident.
 
-## Release Highlights — 0.4.0
+## Release Highlights — 0.5.0
 
-- 🚀 **On-demand indexing:** Module and usage indices now build lazily, shrinking cold-start time for project-sized lint runs.
-- 🧭 **Importer-aware usage scans:** JSX and call-site tracking follows real import graphs so only relevant files are analyzed.
-- 🧱 **Explain traces with stats:** When `debugExplain` is enabled (e.g. on `perf-fiscal/no-unhandled-promises`), the trace now includes an `analyzerStats` step showing how many files were indexed by each subsystem.
-- 🧯 **New guardrails:** `no-heavy-bundle-imports` blocks monolithic entrypoints while `no-inline-context-value` keeps React Context trees stable without waiting for production regressions.
+- 🧯 **New guardrails for React apps:** `no-inline-context-value` now ships in the presets, catching inline objects/arrays passed to `Context.Provider value` before they invalidate every consumer.
+- 📦 **Import hygiene enforcement:** `no-heavy-bundle-imports` detects default entrypoints from hefty packages (lodash, moment, legacy SDKs) and suggests subpath imports when it’s safe to autofix.
+- 🧠 **Analyzer-aware diagnostics:** Cross-file metadata now flows into reporters and docs so teams can understand memo boundaries, async origins, and bundle impact from a single lint run.
+- 🗂️ **Docs & DX refresh:** English and Portuguese READMEs showcase the new rules, configuration snippets, and guided examples; `docs/rules/no-heavy-bundle-imports.md` adds rationale/options for security/perf reviews.
 
-See the detailed notes in [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md). To opt out of the new trace data, keep `debugExplain` set to `false` (the default) or disable it per-rule:
+See the detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To opt out of the extra analyzer trace data, keep `debugExplain` set to `false` (the default) or disable it per-rule:
 
 ```json
 {
