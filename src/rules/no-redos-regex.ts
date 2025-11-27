@@ -55,7 +55,7 @@ export default createRule<Options, MessageIds>({
     type: 'problem',
     docs: {
       description: 'Detect regular expressions that are vulnerable to catastrophic backtracking (ReDoS).',
-  recommended: 'recommended'
+      recommended: 'recommended'
     },
     fixable: 'code',
     schema: [],

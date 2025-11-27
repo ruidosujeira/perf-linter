@@ -1,4 +1,4 @@
-# Perf Fiscal — Performance linting that understands your whole codebase
+# Perf Fiscal — Performance lint for codebases at scale
 
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-perf-fiscal.svg?color=informational)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development)
@@ -6,18 +6,19 @@
 ![Cross-File Powered](https://img.shields.io/badge/Cross--File-Intelligence-blueviolet?style=flat-square)
 ![Rust Core](https://img.shields.io/badge/Core-Rust-orange?style=flat-square)
 
-Perf Fiscal is a professional ESLint plugin focused on preventing performance regressions in JavaScript/TypeScript and React projects. It combines cross-file intelligence with a growing Rust core to deliver precise, low-noise diagnostics—before problems reach production.
+Ship fast. Stay fast.
+
+Perf Fiscal is a professional ESLint plugin that brings the discipline of a performance engineer to every code review. It understands your whole codebase (cross-file analysis), speaks React fluently, and leverages a Rust core for speed and accuracy.
 
 Prefer Portuguese? Veja a versão traduzida em [`README-pt.md`](README-pt.md).
-
-Ship fast. Stay fast.
 
 ## Contents
 
 - [Why Perf Fiscal](#why-perf-fiscal)
 - [What’s New](#whats-new)
-- [Rust Core Engine](#rust-core-engine)
 - [Quick Start](#quick-start)
+- [Rust Core Engine](#rust-core-engine)
+- [Cross-File Intelligence](#cross-file-intelligence)
 - [Configuration](#configuration)
 - [Rule Catalog](#rule-catalog)
 - [Examples](#examples)
@@ -29,21 +30,21 @@ Ship fast. Stay fast.
 
 ## Why Perf Fiscal
 
-- Cross-file intelligence: understands components, props, async flows, and imports across module boundaries.
-- React-savvy: protects memoization, dependency arrays, and context stability with actionable suggestions.
-- Performance-first rules: catch heavy loops, quadratic patterns, and expensive string ops early.
-- Supply-aware imports: detect heavy bundle entrypoints and suggest subpath or alternative imports.
-- ReDoS hardening: optional Rust core strengthens detection of catastrophic backtracking.
-- Low friction: ships flat and classic ESLint presets for quick adoption.
+- Whole-codebase awareness: understands components, props, async flows, and imports across module boundaries.
+- React-savvy: protects memo boundaries, dependency arrays, and Context stability with actionable suggestions.
+- Performance-first rules: catch heavy loops, quadratic growth, costly string ops, and bundle pitfalls early.
+- Supply-aware imports: detect heavy entrypoints and suggest subpath or alternative imports with confidence.
+- Rust acceleration: optional Rust core for parsing, indexing, and security checks with safe JS fallbacks.
+- Low friction: flat and classic ESLint presets, zero mandatory setup beyond your existing TS config.
 
 ## Cross-File Intelligence
 
-- 🔍 **Whole-project analyzer:** indexes exports, memo wrappers, and expected prop signatures (prop kinds such as function vs. object vs. literal) for every React component, dramatically reducing false positives.
-- 🙌 **Context-aware `no-unstable-inline-props`:** automatically relaxes warnings for non-memoized components and aligns diagnostics with the prop’s declared kind.
-- 🛟 **Typed `no-unhandled-promises`:** recognizes Promise-returning helpers imported from other modules instead of relying on name-based heuristics alone.
-- 🧱 **Extensible infrastructure:** rules query shared metadata through `getCrossFileAnalyzer`, enabling future performance heuristics that understand the entire project graph.
+- 🔍 Whole-project analyzer: indexes exports, memo wrappers, and expected prop signatures (function | object | array | primitive) for each React component, dramatically reducing false positives.
+- 🙌 Context-aware `no-unstable-inline-props`: relaxes warnings for non-memoized components and aligns diagnostics with the prop’s declared kind.
+- 🛟 Typed `no-unhandled-promises`: recognizes Promise-returning helpers imported from other modules rather than relying on names.
+- 🧱 Extensible infrastructure: rules query shared metadata via `getCrossFileAnalyzer`, enabling heuristics that understand the entire project graph.
 
-> Perf Fiscal tracks memo boundaries, prop kinds, and async flows across files—delivering smarter, more precise diagnostics than single-file linters.
+Perf Fiscal tracks memo boundaries, prop kinds, and async flows across files—delivering smarter, low-noise diagnostics that scale.
 
 ### Cross-File Warning Snapshot
 
@@ -73,12 +74,11 @@ These examples show how analyzer-backed diagnostics include origin and expected 
 
 ## What’s New
 
-- 🧯 **New guardrails for React apps:** `no-inline-context-value` now ships in the presets, catching inline objects/arrays passed to `Context.Provider value` before they invalidate every consumer.
-- 📦 **Import hygiene enforcement:** `no-heavy-bundle-imports` detects default entrypoints from hefty packages (lodash, moment, legacy SDKs) and suggests subpath imports when it’s safe to autofix.
-- 🧠 **Analyzer-aware diagnostics:** Cross-file metadata now flows into reporters and docs so teams can understand memo boundaries, async origins, and bundle impact from a single lint run.
-- 🗂️ **Docs & DX refresh:** English and Portuguese READMEs showcase the new rules, configuration snippets, and guided examples; `docs/rules/no-heavy-bundle-imports.md` adds rationale/options for security/perf reviews.
-- 🦀 **Rust core (experimental):** a minimal Rust engine now powers ReDoS checks for `no-redos-regex` when available, with JSON I/O and safe fallback to JS if the binary isn’t present.
-- 🧩 **SWC-based Rust parser (experimental):** new `parse` CLI in the Rust core can parse JS/TS/JSX/TSX and return a minimal AST over JSON. A thin TypeScript bridge `parseWithRust()` executes the binary with timeouts and caching, and gracefully falls back to the existing JS parser when the core isn’t available.
+- ⚡ Cross-File Metadata Graph (Rust): index your project in parallel and expose component/props/import/export metadata through a fast JSON snapshot.
+- 🧩 SWC-based Rust parser: new `parse` CLI for JS/TS/JSX/TSX with a thin TypeScript bridge and graceful fallbacks.
+- 🦀 Rust security guardrail: `check-redos` bolsters `no-redos-regex` detection with safe JSON I/O and timeouts.
+- 📦 Smarter import hygiene: `no-heavy-bundle-imports` helps avoid pulling monolithic entrypoints; docs updated with rationale and options.
+- 🛡️ React stability: `no-inline-context-value` prevents Context churn before it cascades across your app.
 
 See detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To opt out of analyzer trace data, keep `debugExplain` set to `false` (default) or disable per rule:
 
@@ -109,60 +109,31 @@ pnpm add -D eslint eslint-plugin-perf-fiscal
 
 ## Rust Core Engine
 
-Perf Fiscal can optionally leverage a lightweight Rust core to strengthen ReDoS detection for `no-redos-regex`. The JavaScript rule automatically falls back to JS when the binary is not available.
+Perf Fiscal can optionally leverage a lightweight Rust core for speed and precision. When unavailable, the plugin gracefully falls back to the existing JS implementations.
 
-Enable locally or in CI:
-
-1) Build the Rust binary once (requires Rust toolchain):
+Build once (local or CI):
 
 ```bash
 cd rust/perf-linter-core
 cargo build --release
 ```
 
-2) Point the plugin to the binary (optional if you built in the default path):
+Optionally point to the binary (if not on the default path):
 
 ```bash
 export PERF_LINTER_CORE="$(pwd)/target/release/perf-linter-core"
 ```
 
-Details:
+Available commands and bridges:
 
-- CLI: `perf-linter-core check-redos`
-- STDIN JSON: `{ "pattern": string }`
-- STDOUT JSON: `{ "safe": boolean, "rewrite"?: string }`
+- ReDoS checker: `perf-linter-core check-redos` (STDIN `{ "pattern": string }` → STDOUT `{ "safe": boolean, "rewrite"?: string }`)
+- Parser (SWC): `echo "const x=1" | perf-linter-core parse --filename input.tsx`
+- Project indexer: `perf-linter-core index /path/to/project > metadata.json`
 
-### Parser (New)
+TypeScript bridges:
 
-Alongside ReDoS checks, the Rust core ships an experimental parser built on SWC.
-
-CLI usage:
-
-```bash
-echo "const x = 1" | perf-linter-core parse
-# Pass a filename to influence TSX/JSX mode
-echo "export const App = () => <div/>" | perf-linter-core parse --filename App.tsx
-```
-
-TypeScript bridge usage (optional):
-
-```ts
-// src/utils/rust-parser.ts
-import { parseWithRust } from './utils/rust-parser';
-
-const source = 'const x: number = 1';
-const ast = parseWithRust(source, 'file.ts');
-if (ast) {
-  // Use the minimal AST shape returned by the Rust core
-} else {
-  // Fallback to your existing JS/TS parser as needed
-}
-```
-
-Notes:
-
-- The bridge detects the binary via `PERF_LINTER_CORE` or the default path `rust/perf-linter-core/target/release/perf-linter-core`.
-- Safe fallbacks mean no configuration changes are required; existing behavior is preserved when the binary isn’t present.
+- Parser bridge: `src/utils/rust-parser.ts` (`parseWithRust(source, filename)` with cache + timeout)
+- Cross-file analyzer bridge: `src/analyzer/cross-file.ts` (`getCrossFileAnalyzer(projectRoot)` with file + memory cache)
 
 ### Flat Config (ESLint ≥8.57)
 
@@ -186,7 +157,7 @@ export default [
 ];
 ```
 
-Note: The cross-file analyzer needs project-aware parser settings (`parserOptions.project` + `tsconfigRootDir`) so it can ask the TypeScript checker about symbol relationships across files.
+Note: The cross-file analyzer benefits from project-aware parser settings (`parserOptions.project` + `tsconfigRootDir`) so it can ask the TypeScript checker about symbol relationships across files.
 
 ## Migration Guides
 
@@ -415,7 +386,7 @@ Perf Fiscal is released under the [MIT License](LICENSE).
 
 ---
 
-Bring the discipline of a performance engineer to every review. Adopt Perf Fiscal to keep your codebase lean, predictable, and production-ready.
+Adopt Perf Fiscal to keep your codebase lean, predictable, and production-ready.
 
 ## Stay in the Loop
 

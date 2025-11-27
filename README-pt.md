@@ -1,4 +1,4 @@
-# Perf Fiscal — Lint de performance que entende seu código inteiro
+# Perf Fiscal — Lint de performance para código em escala
 
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-perf-fiscal.svg?color=informational)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#fluxo-de-desenvolvimento)
@@ -6,42 +6,43 @@
 ![Cross-File Powered](https://img.shields.io/badge/Intelig%C3%AAncia-Cross--File-blueviolet?style=flat-square)
 ![Rust Core](https://img.shields.io/badge/Core-Rust-orange?style=flat-square)
 
-Perf Fiscal é um plugin ESLint profissional focado em prevenir regressões de performance em projetos JavaScript/TypeScript e React. Ele combina inteligência cross-file com um core em Rust em evolução para entregar diagnósticos precisos e de baixo ruído — antes que problemas cheguem à produção.
-
 Slogan: Entregue rápido. Continue rápido.
+
+Perf Fiscal é um plugin ESLint profissional que leva a disciplina de um engenheiro de performance para cada revisão de código. Ele entende seu código inteiro (análise cross-file), fala React fluentemente e aproveita um core em Rust para velocidade e precisão.
 
 ## Sumário
 
 - [Por que Perf Fiscal](#por-que-perf-fiscal)
 - [Novidades](#novidades)
-- [Core em Rust](#core-em-rust)
 - [Primeiros Passos](#primeiros-passos)
-- [Destaques de Configuração](#destaques-de-configuração)
-- [Catálogo de Regras](#catálogo-de-regras)
+- [Core em Rust](#core-em-rust)
+- [Inteligência Cross-File](#intelig%C3%AAncia-cross-file)
+- [Destaques de Configuração](#destaques-de-configura%C3%A7%C3%A3o)
+- [Catálogo de Regras](#cat%C3%A1logo-de-regras)
 - [Exemplos Guiados](#exemplos-guiados)
 - [Compatibilidade](#compatibilidade)
 - [Fluxo de Desenvolvimento](#fluxo-de-desenvolvimento)
 - [Como Contribuir](#como-contribuir)
-- [Licença](#licença)
+- [Licença](#licen%C3%A7a)
 - [Fique por Dentro](#fique-por-dentro)
 
 ## Por que Perf Fiscal
 
-- Inteligência cross-file: entende componentes, props, fluxos assíncronos e imports além dos limites do módulo.
-- Foco em React: protege memoização, arrays de dependência e estabilidade de Context com sugestões acionáveis.
-- Regras orientadas a performance: captura loops pesados, padrões quadráticos e operações de string custosas cedo.
-- Importações mais enxutas: detecta entrypoints de bundles pesados e sugere subpaths ou alternativas leves.
-- Fortalecimento contra ReDoS: core opcional em Rust reforça a detecção de backtracking catastrófico.
-- Adoção simples: presets flat e clássicos do ESLint para começar rápido.
+- Visão de base inteira: entende componentes, props, fluxos assíncronos e imports além dos limites do módulo.
+- Foco em React: protege fronteiras de memo, arrays de dependência e estabilidade de Context com sugestões acionáveis.
+- Regras orientadas a performance: captura loops pesados, crescimento quadrático, operações de string custosas e armadilhas de bundle.
+- Importações conscientes: detecta entrypoints pesados e sugere subpaths ou alternativas mais leves com segurança.
+- Aceleração em Rust: core opcional em Rust para parsing, indexação e checagens de segurança, com fallback seguro em JS.
+- Baixa fricção: presets flat e clássicos do ESLint; nenhum setup obrigatório além do seu TS atual.
 
 ## Inteligência Cross-File
 
-- 🔍 **Analyzer de projeto inteiro:** indexa exports, wrappers de memo e assinaturas de props esperadas (tipos de prop como função, objeto ou literal) para cada componente React, reduzindo drasticamente falsos positivos.
-- 🙌 **`no-unstable-inline-props` com contexto:** relaxa avisos automaticamente para componentes não memoizados e alinha os diagnósticos com o tipo declarado da prop.
-- 🛟 **`no-unhandled-promises` tipado:** reconhece helpers que retornam Promise importados de outros módulos sem depender apenas de heurísticas baseadas em nomes.
-- 🧱 **Infraestrutura extensível:** regras consultam metadata compartilhada via `getCrossFileAnalyzer`, habilitando heurísticas futuras que entendem o grafo completo do projeto.
+- 🔍 Analyzer de projeto inteiro: indexa exports, wrappers de memo e assinaturas de props esperadas (function | object | array | primitive) para cada componente React, reduzindo falsos positivos.
+- 🙌 `no-unstable-inline-props` com contexto: relaxa avisos para componentes não memoizados e alinha diagnósticos ao tipo declarado da prop.
+- 🛟 `no-unhandled-promises` tipado: reconhece helpers que retornam Promise importados de outros módulos em vez de depender de nomes.
+- 🧱 Infraestrutura extensível: regras consultam metadata compartilhada via `getCrossFileAnalyzer`, habilitando heurísticas que entendem o grafo do projeto inteiro.
 
-> O Perf Fiscal rastreia fronteiras de memoização, tipos de prop e fluxos assíncronos entre arquivos — entregando diagnósticos mais inteligentes e precisos do que linters limitados a um único arquivo.
+O Perf Fiscal rastreia fronteiras de memo, tipos de prop e fluxos assíncronos entre arquivos — entregando diagnósticos mais inteligentes e de baixo ruído que escalam.
 
 ### Captura de Alerta Cross-File
 
@@ -71,12 +72,11 @@ Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o ti
 
 ## Novidades
 
-- 🚀 **Indexação sob demanda:** os índices de módulos e usos agora são construídos preguiçosamente, reduzindo o tempo de inicialização em lints de projetos grandes.
-- 🧭 **Coleta de usos com consciência de importadores:** o rastreamento de JSX e chamadas segue o grafo real de imports, analisando apenas os arquivos relevantes.
-- 🧱 **Traces com estatísticas:** ao habilitar `debugExplain` (ex.: `perf-fiscal/no-unhandled-promises`), o trace passa a incluir `analyzerStats` com a contagem de arquivos indexados por subsistema.
-- 🧯 **Novas salvaguardas:** `no-heavy-bundle-imports` impede entrypoints monolíticos enquanto `no-inline-context-value` mantém árvores de Context estáveis antes que regressões cheguem à produção.
-- 🦀 **Core em Rust (experimental):** um núcleo mínimo em Rust agora potencializa as checagens de ReDoS da regra `no-redos-regex` quando disponível, com I/O em JSON e fallback seguro para JS se o binário não estiver presente.
-- 🧩 **Parser em Rust baseado em SWC (experimental):** novo comando `parse` no core em Rust que entende JS/TS/JSX/TSX e retorna um AST mínimo em JSON. Uma ponte fina em TypeScript `parseWithRust()` executa o binário com timeout e cache e faz fallback para o parser JS existente quando o core não está disponível.
+- ⚡ Grafo de Metadata Cross-File (Rust): indexe seu projeto em paralelo e exponha metadados de componentes/props/imports/exports via um snapshot JSON rápido.
+- 🧩 Parser em Rust (SWC): novo CLI `parse` para JS/TS/JSX/TSX com ponte TypeScript e fallbacks elegantes.
+- 🦀 Guarda de segurança em Rust: `check-redos` reforça a regra `no-redos-regex` com I/O em JSON e timeouts.
+- 📦 Higiene de imports: `no-heavy-bundle-imports` ajuda a evitar entrypoints monolíticos; docs atualizados com racional e opções.
+- 🛡️ Estabilidade em React: `no-inline-context-value` previne churn em Context antes que se espalhe pelo app.
 
 Veja as notas completas em [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
 
@@ -107,60 +107,31 @@ pnpm add -D eslint eslint-plugin-perf-fiscal
 
 ## Core em Rust
 
-O Perf Fiscal pode, opcionalmente, usar um core leve em Rust para reforçar a detecção de ReDoS em `no-redos-regex`. A regra em JavaScript faz fallback automaticamente para a implementação em JS quando o binário não está disponível.
+O Perf Fiscal pode, opcionalmente, usar um core leve em Rust para velocidade e precisão. Quando indisponível, o plugin faz fallback de forma transparente para as implementações em JS.
 
-Habilite localmente ou em CI:
-
-1) Compile o binário Rust (requer toolchain Rust):
+Compile uma vez (local ou CI):
 
 ```bash
 cd rust/perf-linter-core
 cargo build --release
 ```
 
-2) Aponte o plugin para o binário (opcional se você compilou no caminho padrão):
+Opcionalmente, aponte o plugin para o binário (se não estiver no caminho padrão):
 
 ```bash
 export PERF_LINTER_CORE="$(pwd)/target/release/perf-linter-core"
 ```
 
-Detalhes:
+Comandos e pontes disponíveis:
 
-- CLI: `perf-linter-core check-redos`
-- STDIN JSON: `{ "pattern": string }`
-- STDOUT JSON: `{ "safe": boolean, "rewrite"?: string }`
+- ReDoS checker: `perf-linter-core check-redos` (STDIN `{ "pattern": string }` → STDOUT `{ "safe": boolean, "rewrite"?: string }`)
+- Parser (SWC): `echo "const x=1" | perf-linter-core parse --filename input.tsx`
+- Indexador de projeto: `perf-linter-core index /caminho/do/projeto > metadata.json`
 
-### Parser (Novo)
+Pontes em TypeScript:
 
-Além das checagens de ReDoS, o core em Rust inclui um parser experimental construído sobre SWC.
-
-Uso via CLI:
-
-```bash
-echo "const x = 1" | perf-linter-core parse
-# Informe um nome de arquivo para influenciar o modo TSX/JSX
-echo "export const App = () => <div/>" | perf-linter-core parse --filename App.tsx
-```
-
-Uso via ponte TypeScript (opcional):
-
-```ts
-// src/utils/rust-parser.ts
-import { parseWithRust } from './utils/rust-parser';
-
-const source = 'const x: number = 1';
-const ast = parseWithRust(source, 'file.ts');
-if (ast) {
-  // Use o formato mínimo de AST retornado pelo core em Rust
-} else {
-  // Faça fallback para o parser JS/TS existente conforme necessário
-}
-```
-
-Notas:
-
-- A ponte detecta o binário via `PERF_LINTER_CORE` ou no caminho padrão `rust/perf-linter-core/target/release/perf-linter-core`.
-- O fallback seguro preserva o comportamento atual quando o binário não está presente.
+- Ponte do parser: `src/utils/rust-parser.ts` (`parseWithRust(source, filename)` com cache + timeout)
+- Ponte do analyzer cross-file: `src/analyzer/cross-file.ts` (`getCrossFileAnalyzer(projectRoot)` com cache em arquivo + memória)
 
 ### Config Flat (ESLint ≥8.57)
 
@@ -184,7 +155,7 @@ export default [
 ];
 ```
 
-Nota: o analyzer cross-file depende de configurações com conhecimento do projeto (`parserOptions.project` + `tsconfigRootDir`) para consultar o checker do TypeScript e seguir símbolos entre arquivos.
+Nota: o analyzer cross-file se beneficia de configurações com conhecimento do projeto (`parserOptions.project` + `tsconfigRootDir`) para consultar o checker do TypeScript e seguir símbolos entre arquivos.
 
 ## Guias de Migração
 

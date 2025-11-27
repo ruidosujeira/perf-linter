@@ -2,7 +2,8 @@ use clap::{Args, Parser, Subcommand};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
-use perf_linter_core::parser::{parse_typescript};
+use perf_linter_core::parser::parse_typescript;
+use perf_linter_core::analyzer::metadata::MetadataGraph;
 
 #[derive(Parser)]
 #[command(author, version, about = "perf-linter core engine", long_about = None)]
@@ -17,6 +18,8 @@ enum Commands {
     CheckRedos,
     /// Parse JS/TS/JSX/TSX from STDIN and print minimal AST JSON
     Parse(ParseArgs),
+    /// Index a project folder and output cross-file metadata graph as JSON
+    Index(IndexArgs),
 }
 
 #[derive(Deserialize)]
@@ -99,6 +102,11 @@ fn main() {
                 }
             }
         }
+        Commands::Index(idx) => {
+            let root = idx.project_root;
+            let graph = MetadataGraph::index_project(&root);
+            println!("{}", graph.to_json());
+        }
     }
 }
 
@@ -107,4 +115,11 @@ struct ParseArgs {
     /// Optional filename hint to influence parser mode (e.g., file.tsx)
     #[arg(long)]
     filename: Option<String>,
+}
+
+#[derive(Args, Debug, Default)]
+struct IndexArgs {
+    /// Path to the project root to index
+    #[arg()]
+    project_root: String,
 }
