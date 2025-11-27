@@ -16,6 +16,7 @@
 - [Principais Capacidades](#principais-capacidades)
 - [Inteligência Cross-File (Novo)](#inteligência-cross-file-novo)
 - [Destaques da Versão — 0.5.0](#destaques-da-versão--050)
+- [Core em Rust (Novo)](#core-em-rust-novo)
 - [Primeiros Passos](#primeiros-passos)
 - [Guias de Migração](#guias-de-migração)
 - [Catálogo de Regras](#catálogo-de-regras)
@@ -79,6 +80,7 @@ Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o ti
 - 🧭 **Coleta de usos com consciência de importadores:** o rastreamento de JSX e chamadas segue o grafo real de imports, analisando apenas os arquivos relevantes.
 - 🧱 **Traces com estatísticas:** ao habilitar `debugExplain` (ex.: `perf-fiscal/no-unhandled-promises`), o trace passa a incluir `analyzerStats` com a contagem de arquivos indexados por subsistema.
 - 🧯 **Novas salvaguardas:** `no-heavy-bundle-imports` impede entrypoints monolíticos enquanto `no-inline-context-value` mantém árvores de Context estáveis antes que regressões cheguem à produção.
+- 🦀 **Core em Rust (experimental):** um núcleo mínimo em Rust agora potencializa as checagens de ReDoS da regra `no-redos-regex` quando disponível, com I/O em JSON e fallback seguro para JS se o binário não estiver presente.
 
 Veja as notas completas em [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md) enquanto o changelog 0.5.0 é finalizado. Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
 
@@ -106,6 +108,31 @@ yarn add --dev eslint eslint-plugin-perf-fiscal
 # ou
 pnpm add -D eslint eslint-plugin-perf-fiscal
 ```
+
+### Core em Rust (Novo)
+
+O Perf Fiscal pode, opcionalmente, usar um core leve em Rust para reforçar a detecção de ReDoS em `no-redos-regex`. A regra em JavaScript faz fallback automaticamente para a implementação existente caso o binário não esteja disponível.
+
+Como habilitar localmente ou em CI:
+
+1) Compile o binário Rust (requer toolchain Rust):
+
+```bash
+cd rust/perf-linter-core
+cargo build --release
+```
+
+2) Aponte o plugin para o binário (opcional se você compilou no caminho padrão):
+
+```bash
+export PERF_LINTER_CORE="$(pwd)/target/release/perf-linter-core"
+```
+
+Detalhes:
+
+- CLI: `perf-linter-core check-redos`
+- STDIN JSON: `{ "pattern": string }`
+- STDOUT JSON: `{ "safe": boolean, "rewrite"?: string }`
 
 ### Config Flat (ESLint ≥8.57)
 

@@ -18,6 +18,7 @@
 - [Key Capabilities](#key-capabilities)
 - [Cross-File Intelligence (New)](#cross-file-intelligence-new)
 - [Release Highlights — 0.5.0](#release-highlights--050)
+- [Rust Core Engine (New)](#rust-core-engine-new)
 - [Getting Started](#getting-started)
 - [Migration Guides](#migration-guides)
 - [Rule Catalog](#rule-catalog)
@@ -81,6 +82,7 @@ These examples show how analyzer-backed diagnostics include origin and expected 
 - 📦 **Import hygiene enforcement:** `no-heavy-bundle-imports` detects default entrypoints from hefty packages (lodash, moment, legacy SDKs) and suggests subpath imports when it’s safe to autofix.
 - 🧠 **Analyzer-aware diagnostics:** Cross-file metadata now flows into reporters and docs so teams can understand memo boundaries, async origins, and bundle impact from a single lint run.
 - 🗂️ **Docs & DX refresh:** English and Portuguese READMEs showcase the new rules, configuration snippets, and guided examples; `docs/rules/no-heavy-bundle-imports.md` adds rationale/options for security/perf reviews.
+- 🦀 **Rust core (experimental):** a minimal Rust engine now powers ReDoS checks for `no-redos-regex` when available, with JSON I/O and safe fallback to JS if the binary isn’t present.
 
 See the detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To opt out of the extra analyzer trace data, keep `debugExplain` set to `false` (the default) or disable it per-rule:
 
@@ -108,6 +110,31 @@ yarn add --dev eslint eslint-plugin-perf-fiscal
 # or
 pnpm add -D eslint eslint-plugin-perf-fiscal
 ```
+
+### Rust Core Engine (New)
+
+Perf Fiscal can optionally leverage a lightweight Rust core to strengthen ReDoS detection for `no-redos-regex`. The JavaScript rule automatically falls back to the existing JS implementation when the binary is not available.
+
+How to enable it locally or in CI:
+
+1) Build the Rust binary once (requires Rust toolchain):
+
+```bash
+cd rust/perf-linter-core
+cargo build --release
+```
+
+2) Point the plugin to the binary (optional if you built in the default path):
+
+```bash
+export PERF_LINTER_CORE="$(pwd)/target/release/perf-linter-core"
+```
+
+Details:
+
+- CLI: `perf-linter-core check-redos`
+- STDIN JSON: `{ "pattern": string }`
+- STDOUT JSON: `{ "safe": boolean, "rewrite"?: string }`
 
 ### Flat Config (ESLint ≥8.57)
 

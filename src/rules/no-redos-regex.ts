@@ -1,12 +1,18 @@
 import { AST_NODE_TYPES, TSESLint, TSESTree } from '@typescript-eslint/utils';
 import safeRegex from 'safe-regex';
 import { createRule } from '../utils/create-rule';
+import { checkReDosWithCore } from '../utils/core-bridge';
 
 type Options = [];
 type MessageIds = 'redosRisk';
 
 function isSafe(pattern: string): boolean {
   try {
+    // Prefer Rust core if available: if core flags unsafe, trust it; otherwise fall back to JS check
+    const core = checkReDosWithCore(pattern);
+    if (core && core.safe === false) {
+      return false;
+    }
     return safeRegex(pattern);
   } catch {
     return true;
@@ -70,7 +76,9 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-        const rewrite = getSimpleNestedQuantifierRewrite(pattern);
+        // Ask Rust core for a rewrite first; if unavailable, use local heuristic
+        const core = checkReDosWithCore(pattern);
+        const rewrite = (core && core.rewrite) || getSimpleNestedQuantifierRewrite(pattern);
 
         context.report({
           node,
@@ -98,7 +106,8 @@ export default createRule<Options, MessageIds>({
           return;
         }
 
-        const rewrite = getSimpleNestedQuantifierRewrite(patternValue);
+        const core = checkReDosWithCore(patternValue);
+        const rewrite = (core && core.rewrite) || getSimpleNestedQuantifierRewrite(patternValue);
 
         context.report({
           node: patternLiteral,
