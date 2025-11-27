@@ -78,6 +78,7 @@ These examples show how analyzer-backed diagnostics include origin and expected 
 - 🧠 **Analyzer-aware diagnostics:** Cross-file metadata now flows into reporters and docs so teams can understand memo boundaries, async origins, and bundle impact from a single lint run.
 - 🗂️ **Docs & DX refresh:** English and Portuguese READMEs showcase the new rules, configuration snippets, and guided examples; `docs/rules/no-heavy-bundle-imports.md` adds rationale/options for security/perf reviews.
 - 🦀 **Rust core (experimental):** a minimal Rust engine now powers ReDoS checks for `no-redos-regex` when available, with JSON I/O and safe fallback to JS if the binary isn’t present.
+- 🧩 **SWC-based Rust parser (experimental):** new `parse` CLI in the Rust core can parse JS/TS/JSX/TSX and return a minimal AST over JSON. A thin TypeScript bridge `parseWithRust()` executes the binary with timeouts and caching, and gracefully falls back to the existing JS parser when the core isn’t available.
 
 See detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To opt out of analyzer trace data, keep `debugExplain` set to `false` (default) or disable per rule:
 
@@ -130,6 +131,38 @@ Details:
 - CLI: `perf-linter-core check-redos`
 - STDIN JSON: `{ "pattern": string }`
 - STDOUT JSON: `{ "safe": boolean, "rewrite"?: string }`
+
+### Parser (New)
+
+Alongside ReDoS checks, the Rust core ships an experimental parser built on SWC.
+
+CLI usage:
+
+```bash
+echo "const x = 1" | perf-linter-core parse
+# Pass a filename to influence TSX/JSX mode
+echo "export const App = () => <div/>" | perf-linter-core parse --filename App.tsx
+```
+
+TypeScript bridge usage (optional):
+
+```ts
+// src/utils/rust-parser.ts
+import { parseWithRust } from './utils/rust-parser';
+
+const source = 'const x: number = 1';
+const ast = parseWithRust(source, 'file.ts');
+if (ast) {
+  // Use the minimal AST shape returned by the Rust core
+} else {
+  // Fallback to your existing JS/TS parser as needed
+}
+```
+
+Notes:
+
+- The bridge detects the binary via `PERF_LINTER_CORE` or the default path `rust/perf-linter-core/target/release/perf-linter-core`.
+- Safe fallbacks mean no configuration changes are required; existing behavior is preserved when the binary isn’t present.
 
 ### Flat Config (ESLint ≥8.57)
 

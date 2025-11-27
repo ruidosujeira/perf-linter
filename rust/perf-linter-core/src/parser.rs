@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
-use swc_common::{errors::{ColorConfig, Handler}, sync::Lrc, SourceMap, Span, DUMMY_SP};
+use swc_common::{
+    errors::{ColorConfig, Handler},
+    sync::Lrc,
+    FileName, SourceMap, Span, DUMMY_SP,
+};
 use swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,7 +41,7 @@ pub fn parse_file(source: &str) -> Result<AstNode, ParseError> {
     let cm: Lrc<SourceMap> = Default::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
-    let fm = cm.new_source_file(swc_common::FileName::Custom("input.tsx".into()), source.into());
+    let fm = cm.new_source_file(FileName::Custom("input.tsx".into()), source.into());
     let input = StringInput::from(&*fm);
     let syntax = Syntax::Typescript(TsConfig {
         tsx: true,
@@ -55,7 +59,7 @@ pub fn parse_file(source: &str) -> Result<AstNode, ParseError> {
     } else {
         parser.take_errors().into_iter().for_each(|e| e.into_diagnostic(&handler).emit());
         // Try script fallback
-        let fm2 = cm.new_source_file(swc_common::FileName::Custom("input.js".into()), source.into());
+        let fm2 = cm.new_source_file(FileName::Custom("input.js".into()), source.into());
         let input2 = StringInput::from(&*fm2);
         let mut parser2 = Parser::new(
             Syntax::Es(EsConfig {
@@ -75,6 +79,44 @@ pub fn parse_file(source: &str) -> Result<AstNode, ParseError> {
                 Err(ParseError(s))
             }
         }
+    }
+}
+
+/// Parse a source string as JS/TS (with JSX) using SWC, honoring the provided filename
+/// to choose sensible defaults. Returns a minimal AST JSON for now (Root node),
+/// but establishes a stable interface for the CLI and future visitors.
+pub fn parse_typescript(source: &str, filename: &str) -> Result<AstNode, ParseError> {
+    let cm: Lrc<SourceMap> = Default::default();
+    let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
+
+    let fname = FileName::Custom(filename.to_string());
+    let fm = cm.new_source_file(fname, source.into());
+    let input = StringInput::from(&*fm);
+
+    // Heuristic: if filename suggests TS, enable TSX; else ES with JSX
+    let is_ts = filename.ends_with(".ts") || filename.ends_with(".tsx") || filename.ends_with(".d.ts");
+    let syntax = if is_ts {
+        Syntax::Typescript(TsConfig {
+            tsx: filename.ends_with(".tsx"),
+            decorators: true,
+            dts: filename.ends_with(".d.ts"),
+            no_early_errors: true,
+            ..Default::default()
+        })
+    } else {
+        Syntax::Es(EsConfig {
+            jsx: filename.ends_with(".jsx") || filename.ends_with(".tsx") || filename.ends_with(".jsx"),
+            decorators: true,
+            ..Default::default()
+        })
+    };
+
+    let mut parser = Parser::new(syntax, input, None);
+    if parser.parse_module().is_ok() || parser.take_errors().is_empty() {
+        Ok(AstNode { kind: NodeKind::Root, span: DUMMY_SP.into(), children: vec![] })
+    } else {
+        parser.take_errors().into_iter().for_each(|e| e.into_diagnostic(&handler).emit());
+        Err(ParseError("Parse error".into()))
     }
 }
 

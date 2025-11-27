@@ -1,7 +1,8 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::io::{self, Read};
+use perf_linter_core::parser::{parse_typescript};
 
 #[derive(Parser)]
 #[command(author, version, about = "perf-linter core engine", long_about = None)]
@@ -14,6 +15,8 @@ struct Cli {
 enum Commands {
     /// Check ReDoS risk for a regex pattern (input via STDIN JSON)
     CheckRedos,
+    /// Parse JS/TS/JSX/TSX from STDIN and print minimal AST JSON
+    Parse(ParseArgs),
 }
 
 #[derive(Deserialize)]
@@ -72,5 +75,36 @@ fn main() {
             let out = RedosOutput { safe, rewrite };
             println!("{}", serde_json::to_string(&out).unwrap());
         }
+        Commands::Parse(args) => {
+            // Read raw source from stdin
+            let mut src = String::new();
+            if io::stdin().read_to_string(&mut src).is_err() {
+                eprintln!("perf-linter-core parse: failed to read from STDIN");
+                std::process::exit(2);
+            }
+            let filename = args.filename.unwrap_or_else(|| "input.tsx".to_string());
+            match parse_typescript(&src, &filename) {
+                Ok(ast) => {
+                    let json = serde_json::to_string(&ast).unwrap_or_else(|_| "{}".to_string());
+                    println!("{}", json);
+                }
+                Err(err) => {
+                    // Print minimal error object to stdout to keep interface JSON
+                    #[derive(Serialize)]
+                    struct ParseErrorOut { error: String }
+                    let out = ParseErrorOut { error: err.0 };
+                    println!("{}", serde_json::to_string(&out).unwrap());
+                    // Non-zero to signal failure to callers that check status
+                    std::process::exit(1);
+                }
+            }
+        }
     }
+}
+
+#[derive(Args, Debug, Default)]
+struct ParseArgs {
+    /// Optional filename hint to influence parser mode (e.g., file.tsx)
+    #[arg(long)]
+    filename: Option<String>,
 }

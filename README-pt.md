@@ -76,6 +76,7 @@ Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o ti
 - 🧱 **Traces com estatísticas:** ao habilitar `debugExplain` (ex.: `perf-fiscal/no-unhandled-promises`), o trace passa a incluir `analyzerStats` com a contagem de arquivos indexados por subsistema.
 - 🧯 **Novas salvaguardas:** `no-heavy-bundle-imports` impede entrypoints monolíticos enquanto `no-inline-context-value` mantém árvores de Context estáveis antes que regressões cheguem à produção.
 - 🦀 **Core em Rust (experimental):** um núcleo mínimo em Rust agora potencializa as checagens de ReDoS da regra `no-redos-regex` quando disponível, com I/O em JSON e fallback seguro para JS se o binário não estiver presente.
+- 🧩 **Parser em Rust baseado em SWC (experimental):** novo comando `parse` no core em Rust que entende JS/TS/JSX/TSX e retorna um AST mínimo em JSON. Uma ponte fina em TypeScript `parseWithRust()` executa o binário com timeout e cache e faz fallback para o parser JS existente quando o core não está disponível.
 
 Veja as notas completas em [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
 
@@ -128,6 +129,38 @@ Detalhes:
 - CLI: `perf-linter-core check-redos`
 - STDIN JSON: `{ "pattern": string }`
 - STDOUT JSON: `{ "safe": boolean, "rewrite"?: string }`
+
+### Parser (Novo)
+
+Além das checagens de ReDoS, o core em Rust inclui um parser experimental construído sobre SWC.
+
+Uso via CLI:
+
+```bash
+echo "const x = 1" | perf-linter-core parse
+# Informe um nome de arquivo para influenciar o modo TSX/JSX
+echo "export const App = () => <div/>" | perf-linter-core parse --filename App.tsx
+```
+
+Uso via ponte TypeScript (opcional):
+
+```ts
+// src/utils/rust-parser.ts
+import { parseWithRust } from './utils/rust-parser';
+
+const source = 'const x: number = 1';
+const ast = parseWithRust(source, 'file.ts');
+if (ast) {
+  // Use o formato mínimo de AST retornado pelo core em Rust
+} else {
+  // Faça fallback para o parser JS/TS existente conforme necessário
+}
+```
+
+Notas:
+
+- A ponte detecta o binário via `PERF_LINTER_CORE` ou no caminho padrão `rust/perf-linter-core/target/release/perf-linter-core`.
+- O fallback seguro preserva o comportamento atual quando o binário não está presente.
 
 ### Config Flat (ESLint ≥8.57)
 

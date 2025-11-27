@@ -13,9 +13,10 @@ rayon = "1.10"
 napi = { version = "2", default-features = false, features = ["napi4", "tokio_rt"] }
 napi-derive = "2"
 # SWC parser stack for AST parsing
-swc_common = { version = "0.36", features = ["tty-emitter"] }
+swc_common = { version = "0.37", features = ["tty-emitter"] }
 swc_ecma_parser = "0.147"
-swc_ecma_ast = "0.118"
+swc_ecma_ast = "0.116"
+swc_ecma_visit = "0.102"
 
 [[bin]]
 name = "perf-linter-core"
