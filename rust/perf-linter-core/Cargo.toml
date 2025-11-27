@@ -8,7 +8,19 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 regex = "1.10"
 clap = { version = "4.5", features = ["derive"] }
+rayon = "1.10"
+# napi-rs for Node.js bridge
+napi = { version = "2", default-features = false, features = ["napi4", "tokio_rt"] }
+napi-derive = "2"
+# SWC parser stack for AST parsing
+swc_common = { version = "0.36", features = ["tty-emitter"] }
+swc_ecma_parser = "0.147"
+swc_ecma_ast = "0.118"
 
 [[bin]]
 name = "perf-linter-core"
 path = "src/main.rs"
+
+[lib]
+name = "perf_linter_core"
+crate-type = ["cdylib", "rlib"]
