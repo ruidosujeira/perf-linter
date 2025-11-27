@@ -1,26 +1,23 @@
-# Perf Fiscal
-
-[Levando inteligência cross-file para JavaScript e React — linting de performance evoluído.]
+# Perf Fiscal — Lint de performance que entende seu código inteiro
 
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-perf-fiscal.svg?color=informational)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
 [![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#fluxo-de-desenvolvimento)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
-![Cross-File Powered](https://img.shields.io/badge/Cross--File-Analysis-blueviolet?style=flat-square)
+![Cross-File Powered](https://img.shields.io/badge/Intelig%C3%AAncia-Cross--File-blueviolet?style=flat-square)
+![Rust Core](https://img.shields.io/badge/Core-Rust-orange?style=flat-square)
 
-[Perf Fiscal](https://github.com/ruidosujeira/perf-linter) é um plugin ESLint profissional para auditar aplicações JavaScript e React em busca de armadilhas recorrentes de performance. Sustentado por um mecanismo de análise TypeScript multi-arquivo, ele entrega diagnósticos focados que destacam trechos de código propensos a desperdiçar CPU, gerar lixo em excesso ou invalidar estratégias de memoização antes de chegar em produção.
+Perf Fiscal é um plugin ESLint profissional focado em prevenir regressões de performance em projetos JavaScript/TypeScript e React. Ele combina inteligência cross-file com um core em Rust em evolução para entregar diagnósticos precisos e de baixo ruído — antes que problemas cheguem à produção.
 
-> 💡 **Primeiro da categoria:** Perf Fiscal é o primeiro kit de lint de performance que correlaciona sinais multi-arquivo em tempo real, usando o checker do TypeScript para entender componentes, props e fluxos assíncronos ao longo de todo o projeto.
+Slogan: Entregue rápido. Continue rápido.
 
 ## Sumário
 
-- [Principais Capacidades](#principais-capacidades)
-- [Inteligência Cross-File (Novo)](#inteligência-cross-file-novo)
-- [Destaques da Versão — 0.5.0](#destaques-da-versão--050)
-- [Core em Rust (Novo)](#core-em-rust-novo)
+- [Por que Perf Fiscal](#por-que-perf-fiscal)
+- [Novidades](#novidades)
+- [Core em Rust](#core-em-rust)
 - [Primeiros Passos](#primeiros-passos)
-- [Guias de Migração](#guias-de-migração)
-- [Catálogo de Regras](#catálogo-de-regras)
 - [Destaques de Configuração](#destaques-de-configuração)
+- [Catálogo de Regras](#catálogo-de-regras)
 - [Exemplos Guiados](#exemplos-guiados)
 - [Compatibilidade](#compatibilidade)
 - [Fluxo de Desenvolvimento](#fluxo-de-desenvolvimento)
@@ -28,25 +25,23 @@
 - [Licença](#licença)
 - [Fique por Dentro](#fique-por-dentro)
 
-## Principais Capacidades
+## Por que Perf Fiscal
 
-- 🚦 Detecta padrões ineficientes em coleções e iterações que geram trabalho desnecessário.
-- 🧠 Protege memoização em React, sinalizando props instáveis, arrays de dependência e lógica inline durante renderização.
-- 🫧 Evita churn em Context.Provider alertando sobre objetos/arrays inline antes que derrubem todos os consumidores.
-- 🛰️ Correlaciona metadata de símbolos através de arquivos para entender fronteiras de memoização, tipos esperados de prop e contratos assíncronos.
-- 📦 Bloqueia entrypoints pesados (`lodash`, `moment`, SDKs legados) para reforçar disciplina de imports enxutos.
-- 🔥 Evita travamentos em runtime causados por backtracking catastrófico de expressões regulares.
-- ⚡️ Expõe fluxos assíncronos não tratados que engolem falhas silenciosamente.
-- ✨ Disponibiliza presets clássicos e flat do ESLint para adoção rápida.
+- Inteligência cross-file: entende componentes, props, fluxos assíncronos e imports além dos limites do módulo.
+- Foco em React: protege memoização, arrays de dependência e estabilidade de Context com sugestões acionáveis.
+- Regras orientadas a performance: captura loops pesados, padrões quadráticos e operações de string custosas cedo.
+- Importações mais enxutas: detecta entrypoints de bundles pesados e sugere subpaths ou alternativas leves.
+- Fortalecimento contra ReDoS: core opcional em Rust reforça a detecção de backtracking catastrófico.
+- Adoção simples: presets flat e clássicos do ESLint para começar rápido.
 
-## Inteligência Cross-File (Novo)
+## Inteligência Cross-File
 
 - 🔍 **Analyzer de projeto inteiro:** indexa exports, wrappers de memo e assinaturas de props esperadas (tipos de prop como função, objeto ou literal) para cada componente React, reduzindo drasticamente falsos positivos.
 - 🙌 **`no-unstable-inline-props` com contexto:** relaxa avisos automaticamente para componentes não memoizados e alinha os diagnósticos com o tipo declarado da prop.
 - 🛟 **`no-unhandled-promises` tipado:** reconhece helpers que retornam Promise importados de outros módulos sem depender apenas de heurísticas baseadas em nomes.
 - 🧱 **Infraestrutura extensível:** regras consultam metadata compartilhada via `getCrossFileAnalyzer`, habilitando heurísticas futuras que entendem o grafo completo do projeto.
 
-> **🧬 Perf Fiscal é o único plugin ESLint que rastreia fronteiras de memoização, tipos de prop e fluxos assíncronos *entre arquivos* — entregando diagnósticos mais inteligentes e precisos do que linters limitados a um único arquivo.**
+> O Perf Fiscal rastreia fronteiras de memoização, tipos de prop e fluxos assíncronos entre arquivos — entregando diagnósticos mais inteligentes e precisos do que linters limitados a um único arquivo.
 
 ### Captura de Alerta Cross-File
 
@@ -74,7 +69,7 @@ src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise retu
 
 Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o tipo esperado de prop, acelerando correções com confiança.
 
-## Destaques da Versão — 0.5.0
+## Novidades
 
 - 🚀 **Indexação sob demanda:** os índices de módulos e usos agora são construídos preguiçosamente, reduzindo o tempo de inicialização em lints de projetos grandes.
 - 🧭 **Coleta de usos com consciência de importadores:** o rastreamento de JSX e chamadas segue o grafo real de imports, analisando apenas os arquivos relevantes.
@@ -82,7 +77,7 @@ Esses exemplos mostram como os diagnósticos enriquecidos trazem a origem e o ti
 - 🧯 **Novas salvaguardas:** `no-heavy-bundle-imports` impede entrypoints monolíticos enquanto `no-inline-context-value` mantém árvores de Context estáveis antes que regressões cheguem à produção.
 - 🦀 **Core em Rust (experimental):** um núcleo mínimo em Rust agora potencializa as checagens de ReDoS da regra `no-redos-regex` quando disponível, com I/O em JSON e fallback seguro para JS se o binário não estiver presente.
 
-Veja as notas completas em [docs/changelog/0.4.0.md](docs/changelog/0.4.0.md) enquanto o changelog 0.5.0 é finalizado. Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
+Veja as notas completas em [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). Para manter o comportamento anterior, deixe `debugExplain` no padrão (`false`) ou desligue por regra:
 
 ```json
 {
@@ -109,11 +104,11 @@ yarn add --dev eslint eslint-plugin-perf-fiscal
 pnpm add -D eslint eslint-plugin-perf-fiscal
 ```
 
-### Core em Rust (Novo)
+## Core em Rust
 
-O Perf Fiscal pode, opcionalmente, usar um core leve em Rust para reforçar a detecção de ReDoS em `no-redos-regex`. A regra em JavaScript faz fallback automaticamente para a implementação existente caso o binário não esteja disponível.
+O Perf Fiscal pode, opcionalmente, usar um core leve em Rust para reforçar a detecção de ReDoS em `no-redos-regex`. A regra em JavaScript faz fallback automaticamente para a implementação em JS quando o binário não está disponível.
 
-Como habilitar localmente ou em CI:
+Habilite localmente ou em CI:
 
 1) Compile o binário Rust (requer toolchain Rust):
 
@@ -156,7 +151,7 @@ export default [
 ];
 ```
 
-> **Nota:** O analyzer cross-file depende de configurações com conhecimento do projeto (`parserOptions.project` + `tsconfigRootDir`) para consultar o checker do TypeScript e seguir símbolos entre arquivos.
+Nota: o analyzer cross-file depende de configurações com conhecimento do projeto (`parserOptions.project` + `tsconfigRootDir`) para consultar o checker do TypeScript e seguir símbolos entre arquivos.
 
 ## Guias de Migração
 

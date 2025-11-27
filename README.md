@@ -1,54 +1,49 @@
-# Perf Fiscal
-
-[Bringing cross-file intelligence to JavaScript and React—performance linting, evolved.]
+# Perf Fiscal — Performance linting that understands your whole codebase
 
 [![npm version](https://img.shields.io/npm/v/eslint-plugin-perf-fiscal.svg?color=informational)](https://www.npmjs.com/package/eslint-plugin-perf-fiscal)
-[![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development-workflow)
+[![build](https://img.shields.io/badge/build-tsc%20--p%20tsconfig.build-blue)](#development)
 [![license](https://img.shields.io/github/license/ruidosujeira/perf-linter.svg)](LICENSE)
-![Cross-File Powered](https://img.shields.io/badge/Cross--File-Analysis-blueviolet?style=flat-square)
+![Cross-File Powered](https://img.shields.io/badge/Cross--File-Intelligence-blueviolet?style=flat-square)
+![Rust Core](https://img.shields.io/badge/Core-Rust-orange?style=flat-square)
 
-[Perf Fiscal](https://github.com/ruidosujeira/perf-linter) is a professional-grade ESLint plugin that audits JavaScript and React applications for recurring performance pitfalls. Powered by a cross-file TypeScript analysis engine, it delivers focused diagnostics that highlight code paths likely to waste CPU, thrash the garbage collector, or invalidate memoization strategies before those issues reach production.
+Perf Fiscal is a professional ESLint plugin focused on preventing performance regressions in JavaScript/TypeScript and React projects. It combines cross-file intelligence with a growing Rust core to deliver precise, low-noise diagnostics—before problems reach production.
 
-> Prefer Portuguese? Confira a versão traduzida em [`README-pt.md`](README-pt.md).
+Prefer Portuguese? Veja a versão traduzida em [`README-pt.md`](README-pt.md).
 
-> 💡 **First in class:** Perf Fiscal is the first performance linting toolkit to correlate multi-file signals in real time, using the TypeScript checker to understand components, props, and async flows across your entire project.
+Ship fast. Stay fast.
 
-## Table of Contents
+## Contents
 
-- [Key Capabilities](#key-capabilities)
-- [Cross-File Intelligence (New)](#cross-file-intelligence-new)
-- [Release Highlights — 0.5.0](#release-highlights--050)
-- [Rust Core Engine (New)](#rust-core-engine-new)
-- [Getting Started](#getting-started)
-- [Migration Guides](#migration-guides)
+- [Why Perf Fiscal](#why-perf-fiscal)
+- [What’s New](#whats-new)
+- [Rust Core Engine](#rust-core-engine)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
 - [Rule Catalog](#rule-catalog)
-- [Configuration Highlights](#configuration-highlights)
-- [Guided Examples](#guided-examples)
+- [Examples](#examples)
 - [Compatibility](#compatibility)
-- [Development Workflow](#development-workflow)
+- [Development](#development)
 - [Contributing](#contributing)
 - [License](#license)
 - [Stay in the Loop](#stay-in-the-loop)
 
-## Key Capabilities
+## Why Perf Fiscal
 
-- 🚦 Detects inefficient collection and iteration patterns that perform unnecessary work.
-- 🧠 Guards React memoization by flagging unstable props, dependency arrays, and inline render logic.
-- 🫧 Prevents Context.Provider churn by warning on inline `value` objects/arrays before they cascade re-renders across consumers.
-- 🛰️ Correlates symbol metadata across files to understand memoization boundaries, prop kinds, and async contracts.
-- 📦 Flags heavy bundle entrypoints (lodash, moment, legacy SDKs) so teams enforce lean import discipline.
-- 🔥 Prevents runtime stalls caused by catastrophic regular-expression backtracking.
-- ⚡️ Surfaces unhandled asynchronous flows that silently swallow failures.
-- ✨ Provides both classic and flat ESLint configuration presets for rapid adoption.
+- Cross-file intelligence: understands components, props, async flows, and imports across module boundaries.
+- React-savvy: protects memoization, dependency arrays, and context stability with actionable suggestions.
+- Performance-first rules: catch heavy loops, quadratic patterns, and expensive string ops early.
+- Supply-aware imports: detect heavy bundle entrypoints and suggest subpath or alternative imports.
+- ReDoS hardening: optional Rust core strengthens detection of catastrophic backtracking.
+- Low friction: ships flat and classic ESLint presets for quick adoption.
 
-## Cross-File Intelligence (New)
+## Cross-File Intelligence
 
 - 🔍 **Whole-project analyzer:** indexes exports, memo wrappers, and expected prop signatures (prop kinds such as function vs. object vs. literal) for every React component, dramatically reducing false positives.
 - 🙌 **Context-aware `no-unstable-inline-props`:** automatically relaxes warnings for non-memoized components and aligns diagnostics with the prop’s declared kind.
 - 🛟 **Typed `no-unhandled-promises`:** recognizes Promise-returning helpers imported from other modules instead of relying on name-based heuristics alone.
 - 🧱 **Extensible infrastructure:** rules query shared metadata through `getCrossFileAnalyzer`, enabling future performance heuristics that understand the entire project graph.
 
-> **🧬 Perf Fiscal is the only ESLint plugin that tracks memo boundaries, prop kinds, and async flows *across files*—delivering smarter, more precise diagnostics than linters confined to a single file.**
+> Perf Fiscal tracks memo boundaries, prop kinds, and async flows across files—delivering smarter, more precise diagnostics than single-file linters.
 
 ### Cross-File Warning Snapshot
 
@@ -76,7 +71,7 @@ src/utils/api.ts:8:5: [perf-fiscal/no-unhandled-promises] Unhandled Promise retu
 
 These examples show how analyzer-backed diagnostics include origin and expected prop-kind, making fixes faster and more confident.
 
-## Release Highlights — 0.5.0
+## What’s New
 
 - 🧯 **New guardrails for React apps:** `no-inline-context-value` now ships in the presets, catching inline objects/arrays passed to `Context.Provider value` before they invalidate every consumer.
 - 📦 **Import hygiene enforcement:** `no-heavy-bundle-imports` detects default entrypoints from hefty packages (lodash, moment, legacy SDKs) and suggests subpath imports when it’s safe to autofix.
@@ -84,7 +79,7 @@ These examples show how analyzer-backed diagnostics include origin and expected 
 - 🗂️ **Docs & DX refresh:** English and Portuguese READMEs showcase the new rules, configuration snippets, and guided examples; `docs/rules/no-heavy-bundle-imports.md` adds rationale/options for security/perf reviews.
 - 🦀 **Rust core (experimental):** a minimal Rust engine now powers ReDoS checks for `no-redos-regex` when available, with JSON I/O and safe fallback to JS if the binary isn’t present.
 
-See the detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To opt out of the extra analyzer trace data, keep `debugExplain` set to `false` (the default) or disable it per-rule:
+See detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To opt out of analyzer trace data, keep `debugExplain` set to `false` (default) or disable per rule:
 
 ```json
 {
@@ -94,7 +89,7 @@ See the detailed notes in [docs/changelog/0.5.0.md](docs/changelog/0.5.0.md). To
 
 Found a regression or noisy warning? Use the dedicated [False Positive issue template](https://github.com/ruidosujeira/perf-linter/issues/new?template=false-positive.md) so we can triage quickly.
 
-## Getting Started
+## Quick Start
 
 > 🧭 **Need typed diagnostics?** Review the [Typed Analyzer Setup](docs/typed-analyzer-setup.md) checklist. In short: (1) create a
 > lint-oriented `tsconfig` that includes every file you want to analyze, (2) point `parserOptions.project`/`tsconfigRootDir` to
@@ -111,11 +106,11 @@ yarn add --dev eslint eslint-plugin-perf-fiscal
 pnpm add -D eslint eslint-plugin-perf-fiscal
 ```
 
-### Rust Core Engine (New)
+## Rust Core Engine
 
-Perf Fiscal can optionally leverage a lightweight Rust core to strengthen ReDoS detection for `no-redos-regex`. The JavaScript rule automatically falls back to the existing JS implementation when the binary is not available.
+Perf Fiscal can optionally leverage a lightweight Rust core to strengthen ReDoS detection for `no-redos-regex`. The JavaScript rule automatically falls back to JS when the binary is not available.
 
-How to enable it locally or in CI:
+Enable locally or in CI:
 
 1) Build the Rust binary once (requires Rust toolchain):
 
@@ -158,7 +153,7 @@ export default [
 ];
 ```
 
-> **Note:** The cross-file analyzer needs project-aware parser settings (`parserOptions.project` + `tsconfigRootDir`) so that it can ask the TypeScript checker about symbol relationships across files.
+Note: The cross-file analyzer needs project-aware parser settings (`parserOptions.project` + `tsconfigRootDir`) so it can ask the TypeScript checker about symbol relationships across files.
 
 ## Migration Guides
 
@@ -220,7 +215,7 @@ Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
 | `perf-fiscal/prefer-object-hasown` | 🧾 Legacy `hasOwnProperty.call` patterns | Use `Object.hasOwn` | [docs/rules/prefer-object-hasown.md](docs/rules/prefer-object-hasown.md) |
 | `perf-fiscal/prefer-promise-all-settled` | 🤝 `Promise.all` expecting partial failures | Migrate to `Promise.allSettled` | [docs/rules/prefer-promise-all-settled.md](docs/rules/prefer-promise-all-settled.md) |
 
-## Configuration Highlights
+## Configuration
 
 - 🧰 **Flat vs. classic presets:** Use `perfFiscal.configs.recommended` for flat configs or `plugin:perf-fiscal/recommended` for classic configs.
 - 🛰️ **Enable cross-file intelligence:** Configure `@typescript-eslint/parser` with `parserOptions.project` and `tsconfigRootDir` so Perf Fiscal can invoke the TypeScript checker and follow symbols across files.
@@ -253,7 +248,7 @@ Each rule ships with in-depth guidance in `docs/rules/<rule-name>.md`.
   'perf-fiscal/no-unhandled-promises': ['error', { strictness: 'balanced' }]
   ```
 
-## Guided Examples
+## Examples
 
 ### Stabilize React Callbacks
 
@@ -341,7 +336,7 @@ The clip above (capture it following [docs/examples/cross-file-warning/README.md
 
 🧪 Typed RuleTester: our [typed runner](tests/utils/rule-tester.ts) and CI simulate real-world React+TS projects with cross-file usage, so every rule ships with analyzer-backed coverage.
 
-## Development Workflow
+## Development
 
 ```bash
 npm install
