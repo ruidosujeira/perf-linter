@@ -8,7 +8,7 @@
 
 Ship fast. Stay fast.
 
-Perf Fiscal is a professional ESLint plugin that brings the discipline of a performance engineer to every code review. It understands your whole codebase (cross-file analysis), speaks React fluently, and leverages a Rust core for speed and accuracy.
+Perf Fiscal is a professional ESLint plugin that brings the discipline of a performance engineer to every code review. It understands your whole codebase (cross-file analysis), speaks React and Vue.js fluently, and leverages a Rust core for speed and accuracy.
 
 Prefer Portuguese? Veja a versão traduzida em [`README-pt.md`](README-pt.md).
 
@@ -32,6 +32,7 @@ Prefer Portuguese? Veja a versão traduzida em [`README-pt.md`](README-pt.md).
 
 - Whole-codebase awareness: understands components, props, async flows, and imports across module boundaries.
 - React-savvy: protects memo boundaries, dependency arrays, and Context stability with actionable suggestions.
+- Vue-optimized: detects inefficient computed properties, watchers, and reactivity patterns in both Options and Composition API.
 - Performance-first rules: catch heavy loops, quadratic growth, costly string ops, and bundle pitfalls early.
 - Supply-aware imports: detect heavy entrypoints and suggest subpath or alternative imports with confidence.
 - Rust acceleration: optional Rust core for parsing, indexing, and security checks with safe JS fallbacks.
@@ -153,7 +154,9 @@ export default [
       }
     }
   },
-  perfFiscal.configs.recommended
+  perfFiscal.configs.recommended  // For React projects
+  // or
+  // perfFiscal.configs['flat/vue']  // For Vue.js projects
 ];
 ```
 
@@ -164,6 +167,7 @@ Note: The cross-file analyzer benefits from project-aware parser settings (`pars
 Ready to adopt Perf Fiscal in an existing codebase? Choose the guide that matches your architecture:
 
 - [React Application Migration Guide](docs/migrations/react.md) – stage the rollout across React apps and React Native projects while maintaining memo stability.
+- [Vue.js Application Migration Guide](docs/migrations/vue.md) – adopt performance rules for Vue 3 projects using Composition API or Options API.
 - [Node.js Service Migration Guide](docs/migrations/node-services.md) – integrate the plugin into backend services, CLIs, and worker processes.
 - [Mixed Monorepo Migration Guide](docs/migrations/monorepo.md) – coordinate adoption across workspaces that blend frontends, services, and shared packages.
 
@@ -178,7 +182,9 @@ module.exports = {
     project: ['./tsconfig.json'],
     tsconfigRootDir: __dirname
   },
-  extends: ['plugin:perf-fiscal/recommended']
+  extends: ['plugin:perf-fiscal/recommended']  // For React
+  // or
+  // extends: ['plugin:perf-fiscal/vue']  // For Vue.js
 };
 ```
 
