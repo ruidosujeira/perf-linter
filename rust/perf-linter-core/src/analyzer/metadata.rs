@@ -1,10 +1,11 @@
 use crate::analyzer::extract::{extract_all, ExportInfo, ImportMeta};
+use crate::cache::IncrementalCache;
 use dashmap::DashMap;
 use rayon::prelude::*;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentMeta {
     pub name: String,
     pub file_path: String,
@@ -14,7 +15,7 @@ pub struct ComponentMeta {
     pub line: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropInfo {
     pub name: String,
     pub kind: PropKind,
@@ -22,12 +23,20 @@ pub struct PropInfo {
     pub line: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PropKind {
     Function,
     Object,
     Array,
     Primitive,
+}
+
+/// Cacheable extraction result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FileAnalysis {
+    components: Vec<ComponentMeta>,
+    imports: Vec<ImportMeta>,
+    exports: Vec<ExportInfo>,
 }
 
 #[derive(Serialize)]
@@ -44,19 +53,53 @@ pub struct MetadataGraph {
 }
 
 impl MetadataGraph {
+    /// Index a project with incremental caching for performance
     pub fn index_project(project_root: &str) -> Self {
+        Self::index_project_with_cache(project_root, true)
+    }
+
+    /// Index a project with optional cache control
+    pub fn index_project_with_cache(project_root: &str, use_cache: bool) -> Self {
         let files = find_all_source_files(project_root);
 
         let components = Arc::new(DashMap::new());
         let imports = Arc::new(DashMap::new());
         let exports = Arc::new(DashMap::new());
 
+        // Create cache in system temp directory
+        let cache_dir = std::env::temp_dir().join("perf_linter_cache");
+        let cache = if use_cache {
+            Some(Arc::new(IncrementalCache::<FileAnalysis>::new(&cache_dir, "0.6.0")))
+        } else {
+            None
+        };
+
         files.par_iter().for_each(|file_path| {
             if let Ok(source) = std::fs::read_to_string(file_path) {
-                let (mut comps, imps, exps) = extract_all(&source, file_path);
+                // Try to get from cache first
+                let (mut comps, imps, exps) = if let Some(ref cache) = cache {
+                    if let Some(cached) = cache.get(file_path, &source) {
+                        (cached.components, cached.imports, cached.exports)
+                    } else {
+                        let result = extract_all(&source, file_path);
+                        // Store in cache for next time
+                        cache.set(file_path, &source, FileAnalysis {
+                            components: result.0.clone(),
+                            imports: result.1.clone(),
+                            exports: result.2.clone(),
+                        });
+                        result
+                    }
+                } else {
+                    extract_all(&source, file_path)
+                };
 
-                if !imps.is_empty() { imports.insert(file_path.clone(), imps); }
-                if !exps.is_empty() { exports.insert(file_path.clone(), exps.clone()); }
+                if !imps.is_empty() {
+                    imports.insert(file_path.clone(), imps);
+                }
+                if !exps.is_empty() {
+                    exports.insert(file_path.clone(), exps.clone());
+                }
 
                 for c in comps.drain(..) {
                     let mut comp = c;
@@ -68,7 +111,11 @@ impl MetadataGraph {
             }
         });
 
-        Self { components, imports, exports }
+        Self {
+            components,
+            imports,
+            exports,
+        }
     }
 
     pub fn get_memo_boundary(&self, symbol: &str) -> Option<ComponentMeta> {

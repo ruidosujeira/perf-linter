@@ -1,3 +1,8 @@
 node_modules/
 dist/
 coverage/
+
+# Rust
+rust/*/target/
+rust/**/target/
+**/Cargo.lock

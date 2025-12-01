@@ -1,14 +1,14 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use swc_common::{errors::{ColorConfig, Handler}, sync::Lrc, FileName, SourceMap, Span};
 use swc_ecma_ast::*;
 use swc_ecma_parser::{EsConfig, Parser, StringInput, Syntax, TsConfig};
 use swc_ecma_visit::{Visit, VisitWith};
 use super::metadata::{ComponentMeta, PropInfo, PropKind};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExportKind { Named, Default }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportInfo {
     pub name: String,
     pub kind: ExportKind,
@@ -17,13 +17,13 @@ pub struct ExportInfo {
 
 // PropKind/PropInfo são definidos em metadata.rs
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImportSpecifierMeta {
     pub local: String,
     pub imported: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImportMeta {
     pub source: String,
     pub specifiers: Vec<ImportSpecifierMeta>,
