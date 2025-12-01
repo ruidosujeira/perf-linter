@@ -14,26 +14,35 @@ import preferObjectHasOwn from './rules/prefer-object-hasown';
 import preferPromiseAllSettled from './rules/prefer-promise-all-settled';
 import noHeavyBundleImports from './rules/no-heavy-bundle-imports';
 import noInlineContextValue from './rules/no-inline-context-value';
+import vueNoExpensiveComputed from './rules/vue-no-expensive-computed';
+import vueNoInefficientWatchers from './rules/vue-no-inefficient-watchers';
+import vueOptimizeReactivity from './rules/vue-optimize-reactivity';
 
 const PLUGIN_NAME = 'perf-fiscal';
 
 type PluginRules = Record<string, TSESLint.RuleModule<string, readonly unknown[]>>;
 
 export const rules: PluginRules = {
+  // General performance rules
   'prefer-array-some': preferArraySome,
-  'no-unstable-usememo-deps': noUnstableUseMemoDeps,
-  'no-redos-regex': noReDosRegex,
-  'detect-unnecessary-rerenders': detectUnnecessaryRerenders,
   'prefer-for-of': preferForOf,
   'prefer-object-hasown': preferObjectHasOwn,
-  'no-unhandled-promises': noUnhandledPromises,
   'prefer-promise-all-settled': preferPromiseAllSettled,
-  'no-expensive-computations-in-render': noExpensiveComputationsInRender,
+  'no-redos-regex': noReDosRegex,
+  'no-unhandled-promises': noUnhandledPromises,
   'no-expensive-split-replace': noExpensiveSplitReplace,
-  'no-unstable-inline-props': noUnstableInlineProps,
   'no-quadratic-complexity': noQuadraticComplexity,
   'no-heavy-bundle-imports': noHeavyBundleImports,
-  'no-inline-context-value': noInlineContextValue
+  // React-specific rules
+  'no-unstable-usememo-deps': noUnstableUseMemoDeps,
+  'detect-unnecessary-rerenders': detectUnnecessaryRerenders,
+  'no-expensive-computations-in-render': noExpensiveComputationsInRender,
+  'no-unstable-inline-props': noUnstableInlineProps,
+  'no-inline-context-value': noInlineContextValue,
+  // Vue.js-specific rules
+  'vue-no-expensive-computed': vueNoExpensiveComputed,
+  'vue-no-inefficient-watchers': vueNoInefficientWatchers,
+  'vue-optimize-reactivity': vueOptimizeReactivity
 };
 
 const recommendedRules: TSESLint.FlatConfig.Rules = {
@@ -51,6 +60,23 @@ const recommendedRules: TSESLint.FlatConfig.Rules = {
   [`${PLUGIN_NAME}/no-quadratic-complexity`]: 'warn',
   [`${PLUGIN_NAME}/no-heavy-bundle-imports`]: 'warn',
   [`${PLUGIN_NAME}/no-inline-context-value`]: 'warn'
+};
+
+const vueRecommendedRules: TSESLint.FlatConfig.Rules = {
+  // Include general rules
+  [`${PLUGIN_NAME}/prefer-array-some`]: 'warn',
+  [`${PLUGIN_NAME}/no-redos-regex`]: 'warn',
+  [`${PLUGIN_NAME}/prefer-for-of`]: 'warn',
+  [`${PLUGIN_NAME}/prefer-object-hasown`]: 'warn',
+  [`${PLUGIN_NAME}/no-unhandled-promises`]: 'warn',
+  [`${PLUGIN_NAME}/prefer-promise-all-settled`]: 'warn',
+  [`${PLUGIN_NAME}/no-expensive-split-replace`]: 'warn',
+  [`${PLUGIN_NAME}/no-quadratic-complexity`]: 'warn',
+  [`${PLUGIN_NAME}/no-heavy-bundle-imports`]: 'warn',
+  // Vue-specific rules
+  [`${PLUGIN_NAME}/vue-no-expensive-computed`]: 'warn',
+  [`${PLUGIN_NAME}/vue-no-inefficient-watchers`]: 'warn',
+  [`${PLUGIN_NAME}/vue-optimize-reactivity`]: 'warn'
 };
 
 const classicRecommendedConfig: TSESLint.ClassicConfig.Config = {
@@ -74,9 +100,27 @@ const flatRecommendedConfig: TSESLint.FlatConfig.Config = {
   rules: recommendedRules
 };
 
+const classicVueConfig: TSESLint.ClassicConfig.Config = {
+  plugins: [PLUGIN_NAME],
+  rules: vueRecommendedRules
+};
+
+const flatVueConfig: TSESLint.FlatConfig.Config = {
+  name: `${PLUGIN_NAME}/flat-vue`,
+  plugins: {
+    [PLUGIN_NAME]: {
+      meta,
+      rules
+    }
+  },
+  rules: vueRecommendedRules
+};
+
 export const configs = {
   recommended: classicRecommendedConfig,
-  'flat/recommended': flatRecommendedConfig
+  'flat/recommended': flatRecommendedConfig,
+  vue: classicVueConfig,
+  'flat/vue': flatVueConfig
 };
 
 export default {
